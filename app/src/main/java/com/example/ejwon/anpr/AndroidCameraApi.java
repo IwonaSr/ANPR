@@ -33,11 +33,9 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -65,7 +63,9 @@ public class AndroidCameraApi extends AppCompatActivity {
     private Handler mBackgroundHandler;
     private HandlerThread mBackgroundThread;
     private static final int mImageFormat = ImageFormat.YUV_420_888;
-    pivate byte mRgbBuffer;
+    private int mHeigth;
+    int[] mRgbBuffer;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -177,23 +177,23 @@ public class AndroidCameraApi extends AppCompatActivity {
             if(!folder.exists()){
                 success = folder.mkdirs();
             }
-//            if(success){
-//                file = new File(folder,"pic.jpg");
-//                if(file.exists()){
-//                    System.out.println("File exist");
-//                }else{
-//                    System.out.println("Not exist");
-//                }
-//                System.out.println("Location of image is: " + Environment.getExternalStorageDirectory()+ File.separator + "ANPR/");
-//            }else{
-//                System.out.println("Cannot create a folder");
-//            }
+            if(success){
+                file = new File(folder,"pic.jpg");
+                if(file.exists()){
+                    System.out.println("File exist");
+                }else{
+                    System.out.println("Not exist");
+                }
+                System.out.println("Location of image is: " + Environment.getExternalStorageDirectory()+ File.separator + "ANPR/");
+            }else{
+                System.out.println("Cannot create a folder");
+            }
             final int finalHeight = height;
             ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
                 @Override
                 public void onImageAvailable(ImageReader reader) {
                     Image image = null;
-                    try {
+//                    try {
                         image = reader.acquireLatestImage();
                         if( image == null){
                             System.out.println("Image is not available.");
@@ -210,22 +210,24 @@ public class AndroidCameraApi extends AppCompatActivity {
                         // RowStride of planes may differ from width set to image reader, depends
                         // on device and camera hardware, for example on Nexus 6P the rowStride is
                         // 384 and the image width is 352.
-                        save(bytes);
-                        final Image.Plane[] planes = image.getPlanes();
-                        final int total = planes[0].getRowStride() * finalHeight;
-                        if (mRgbBuffer == null || mRgbBuffer.length < total)
-                            mRgbBuffer = new int[total];
-
-
-                    } catch (FileNotFoundException e) {
-                        e.printStackTrace();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    } finally {
-                        if (image != null) {
-                            image.close();
-                        }
+//                        save(bytes);
+                    if(image.getFormat() == ImageFormat.YUV_420_888) {
+                        ImageFormatConversion.convertYuv420888ToMat(image, false);
                     }
+
+                    image.close();
+
+
+//                    }
+//                    catch (FileNotFoundException e) {
+//                        e.printStackTrace();
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    } finally {
+//                        if (image != null) {
+//                            image.close();
+//                        }
+//                    }
                 }
                 private void save(byte[] bytes) throws IOException {
                     OutputStream output = null;
