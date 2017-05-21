@@ -1,18 +1,26 @@
 package com.example.ejwon.anpr;
 
+import android.graphics.Bitmap;
 import android.media.Image;
+import android.util.Log;
 
+import org.opencv.android.Utils;
+import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
+import java.util.Random;
 
 /**
  * Created by Ejwon on 2017-05-13.
  */
 public final class ImageFormatConversion {
+
+    private static final String TAG = "Save Bitmap as Image";
 
     //http://answers.opencv.org/question/61628/android-camera2-yuv-to-rgb-conversion-turns-out-green/?answer=100322#post-id-100322
     public static Mat convertYuv420888ToMat(Image image, boolean isGreyOnly){
@@ -82,6 +90,41 @@ public final class ImageFormatConversion {
             return yuvMat;
     }
 
+    public static Bitmap getBitmapFromMat(Mat tmp){
+
+        Bitmap bmp = null;
+        try {
+            bmp = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
+            Utils.matToBitmap(tmp, bmp);
+            return bmp;
+        }
+        catch (CvException e){
+            Log.d("Exception",e.getMessage());
+        }
+
+        return null;
+    }
+
+
+    public static void saveBitmapAsJpegFile(Bitmap bm, File myDir){
+
+        Random generator = new Random();
+        int n = 10000;
+        n = generator.nextInt(n);
+        String fname = "Image-" + n + ".jpg";
+        File file = new File(myDir, fname);
+        Log.i(TAG, "" + file);
+        if (file.exists())
+            file.delete();
+        try {
+            FileOutputStream out = new FileOutputStream(file);
+            bm.compress(Bitmap.CompressFormat.JPEG, 90, out);
+            out.flush();
+            out.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
     private byte[] toByteArray(Image image, File destination) {
 
         Image.Plane yPlane = image.getPlanes()[0];

@@ -3,6 +3,7 @@ package com.example.ejwon.anpr;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
@@ -31,6 +32,11 @@ import android.view.TextureView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
+
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Mat;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -65,6 +71,7 @@ public class AndroidCameraApi extends AppCompatActivity {
     private static final int mImageFormat = ImageFormat.YUV_420_888;
     private int mHeigth;
     int[] mRgbBuffer;
+    public File folder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,6 +79,21 @@ public class AndroidCameraApi extends AppCompatActivity {
         setContentView(R.layout.activity_android_camera_api);
         textureView = (TextureView) findViewById(R.id.texture);
         assert textureView != null;
+
+        Boolean checkOpenCV = OpenCVLoader.initAsync(
+                OpenCVLoader.OPENCV_VERSION_3_0_0,
+                getApplicationContext(),
+                mOpenCVCallBack);
+
+        if(checkOpenCV)
+        {
+            try {
+
+            } catch (Exception e1) {
+                Log.e("MissingOpenCVManager",e1.toString());
+            }
+        }
+
         textureView.setSurfaceTextureListener(textureListener);
         takePictureButton = (Button) findViewById(R.id.btn_takepicture);
         assert takePictureButton != null;
@@ -82,6 +104,25 @@ public class AndroidCameraApi extends AppCompatActivity {
             }
         });
     }
+
+    private BaseLoaderCallback mOpenCVCallBack = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS:
+                {
+                    Log.i(TAG, "OpenCV loaded successfully");
+                    //Load Cascade Classifier
+                    CascadeClassifierUtil.loadCascadeClassifier(getResources(), getApplicationContext());
+                } break;
+                default:
+                {
+                    super.onManagerConnected(status);
+                } break;
+            }
+        }
+    };
+
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
@@ -153,8 +194,8 @@ public class AndroidCameraApi extends AppCompatActivity {
             if (characteristics != null) {
                 jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(mImageFormat);
             }
-            int width = 640;
-            int height = 480;
+            int width = 640;//1920
+            int height = 480;//1080
             if (jpegSizes != null && 0 < jpegSizes.length) {
                 width = jpegSizes[0].getWidth();
                 height = jpegSizes[0].getHeight();
@@ -162,7 +203,7 @@ public class AndroidCameraApi extends AppCompatActivity {
             //ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1); - dla robienia zwykłych zdjeć
             ImageReader reader = ImageReader.newInstance(width, height,mImageFormat, 5); // YUV - 30fps at 8MP - image processing
             //zmienilam z 1 na 3 zeby zwracalo wiecej surfac
-            List<Surface> outputSurfaces = new ArrayList<Surface>(2);
+            List<Surface> outputSurfaces = new ArrayList<Surface>(5);
             outputSurfaces.add(reader.getSurface());
             outputSurfaces.add(new Surface(textureView.getSurfaceTexture()));
 //            final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE); //gdy chcemy przechwycić klatke obrazu (zdjecie)
@@ -172,13 +213,14 @@ public class AndroidCameraApi extends AppCompatActivity {
             // Orientation
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
-            final File folder = new File(Environment.getExternalStorageDirectory()+ File.separator + "ANPR/");
+            //final File folder
+            folder = new File(Environment.getExternalStorageDirectory()+ File.separator + "ANPR/");
             boolean success = true;
             if(!folder.exists()){
                 success = folder.mkdirs();
             }
             if(success){
-                file = new File(folder,"pic.jpg");
+                file = new File(folder,"pic3.jpg");
                 if(file.exists()){
                     System.out.println("File exist");
                 }else{
@@ -212,7 +254,9 @@ public class AndroidCameraApi extends AppCompatActivity {
                         // 384 and the image width is 352.
 //                        save(bytes);
                     if(image.getFormat() == ImageFormat.YUV_420_888) {
-                        ImageFormatConversion.convertYuv420888ToMat(image, false);
+                        Mat matImage = ImageFormatConversion.convertYuv420888ToMat(image, false);
+                        Bitmap bmp = ImageFormatConversion.getBitmapFromMat(matImage);
+                        ImageFormatConversion.saveBitmapAsJpegFile(bmp, folder);
                     }
 
                     image.close();
