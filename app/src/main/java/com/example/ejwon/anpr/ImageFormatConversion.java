@@ -110,7 +110,6 @@ public final class ImageFormatConversion {
 
         Random generator = new Random();
         int n = 10000;
-        int n2 = 10000;
         n = generator.nextInt(n);
         String fname = "Image-" + n + ".jpg";
         File file = new File(myDir, fname);
