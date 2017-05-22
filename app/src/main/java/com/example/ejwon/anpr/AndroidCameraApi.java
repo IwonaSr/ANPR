@@ -13,6 +13,7 @@ import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
@@ -76,6 +77,7 @@ public class AndroidCameraApi extends AppCompatActivity {
     int[] mRgbBuffer;
     public File folder;
     int i = 0;
+    private int count = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -217,14 +219,17 @@ public class AndroidCameraApi extends AppCompatActivity {
             }
             //ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1); - dla robienia zwykłych zdjeć
             ImageReader reader = ImageReader.newInstance(width, height, mImageFormat, 5); // YUV - 30fps at 8MP - image processing
+
             //zmienilam z 1 na 3 zeby zwracalo wiecej surfac
             List<Surface> outputSurfaces = new ArrayList<Surface>(5);
             outputSurfaces.add(reader.getSurface());
             outputSurfaces.add(new Surface(textureView.getSurfaceTexture()));
+
 //            final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE); //gdy chcemy przechwycić klatke obrazu (zdjecie)
             final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW); //Create a request suitable for a camera preview window.
             captureBuilder.addTarget(reader.getSurface());
             captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+
             // Orientation
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
@@ -334,11 +339,17 @@ public class AndroidCameraApi extends AppCompatActivity {
         try {
             SurfaceTexture texture = textureView.getSurfaceTexture();
             assert texture != null;
+
+            // We configure the size of default buffer to be the size of camera preview we want.
             texture.setDefaultBufferSize(imageDimension.getWidth(), imageDimension.getHeight());
+
             Surface surface = new Surface(texture);
+            Surface mImageSurface = imageReader.getSurface(); //dopisałam -22.05
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             captureRequestBuilder.addTarget(surface);
-            cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback() {
+            captureRequestBuilder.addTarget(mImageSurface); // dopisalam - 22.05
+
+            cameraDevice.createCaptureSession(Arrays.asList(mImageSurface, surface), new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
                     //The camera is already closed
@@ -362,26 +373,161 @@ public class AndroidCameraApi extends AppCompatActivity {
     }
 
     private void openCamera() {
+        setUpCameraOutputs();
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         Log.e(TAG, "is camera open");
         try {
-            cameraId = manager.getCameraIdList()[0];
-            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
-            StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            assert map != null;
-            imageDimension = map.getOutputSizes(SurfaceTexture.class)[0];
+//            cameraId = manager.getCameraIdList()[0];
+//            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+//            StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+//            assert map != null;
+//            imageDimension = map.getOutputSizes(SurfaceTexture.class)[0];
             // Add permission for camera and let user grant the permission
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(AndroidCameraApi.this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CAMERA_PERMISSION);
                 return;
             }
-            manager.openCamera(cameraId, stateCallback, null);
+//            manager.openCamera(cameraId, stateCallback, null);
+            manager.openCamera(cameraId, stateCallback, mBackgroundHandler);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
         Log.e(TAG, "openCamera X");
     }
 
+    //dodane 22.05
+    private void setUpCameraOutputs() {
+//        if (null == cameraDevice) {
+//            Log.e(TAG, "cameraDevice is null");
+//            return;
+//        }
+        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        try {
+            cameraId = manager.getCameraIdList()[0];
+            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+//            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraDevice.getId());
+            StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            assert map != null;
+            imageDimension = map.getOutputSizes(SurfaceTexture.class)[0];
+
+            Size[] jpegSizes = null;
+            if (characteristics != null) {
+                jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(mImageFormat);
+            }
+            int width = 1920;//1920
+            int height = 1080;//1080
+            if (jpegSizes != null && 0 < jpegSizes.length) {
+                width = jpegSizes[0].getWidth();
+                height = jpegSizes[0].getHeight();
+            }
+            //ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1); - dla robienia zwykłych zdjeć
+            imageReader = ImageReader.newInstance(width, height, mImageFormat, 5); // YUV - 30fps at 8MP - image processing
+
+//            //zmienilam z 1 na 5 zeby zwracalo wiecej surfac
+            List<Surface> outputSurfaces = new ArrayList<Surface>(5);
+            outputSurfaces.add(imageReader.getSurface());
+            outputSurfaces.add(new Surface(textureView.getSurfaceTexture())); //ustawianie rozmiaru surfacetexture?
+
+//            final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW); //Create a request suitable for a camera preview window.
+//            captureBuilder.addTarget(imageReader.getSurface());
+//            captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+
+//            // Orientation
+//            int rotation = getWindowManager().getDefaultDisplay().getRotation();
+//            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
+            //final File folder
+            folder = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR/");
+            boolean success = true;
+            if (!folder.exists()) {
+                success = folder.mkdirs();
+            } else {
+                System.out.println("Cannot create a folder");
+            }
+            final int finalHeight = height;
+            imageReader.setOnImageAvailableListener(readerListener, mBackgroundHandler);
+
+            return;
+
+
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private final ImageReader.OnImageAvailableListener readerListener =
+            new ImageReader.OnImageAvailableListener() {
+
+                @Override
+                public void onImageAvailable(ImageReader reader) {
+                    Log.e(TAG,"onImageAvailable: " + count++);
+                    Image image = null;
+                    Bitmap bmp = null;
+                    try {
+                        image = reader.acquireLatestImage();
+                        if (image == null) {
+                            System.out.println("Image is not available.");
+                            return;
+                        }
+                        int fmt = reader.getImageFormat();
+                        Log.d(TAG, "bob image fmt:" + fmt);
+
+                        //for old example jpeg
+//                        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+//                        byte[] bytes = new byte[buffer.capacity()];
+//                        buffer.get(bytes);
+
+                        // RowStride of planes may differ from width set to image reader, depends
+                        // on device and camera hardware, for example on Nexus 6P the rowStride is
+                        // 384 and the image width is 352.
+//                        save(bytes);
+                        if (image.getFormat() == ImageFormat.YUV_420_888) {
+
+                            Log.e(TAG, "dont process image, i: " + i);
+
+                            Log.e(TAG, " process image, i: " + i);
+                            Mat matImage = ImageFormatConversion.convertYuv420888ToMat(image, false);
+                            bmp = ImageFormatConversion.getBitmapFromMat(matImage);
+                            ImageFormatConversion.saveBitmapAsJpegFile(bmp, folder);
+                        }
+
+                        image.close();
+
+                    }//                    }
+                    catch (Exception e) {
+                        e.printStackTrace();
+                    } finally {
+                        Log.e(TAG, "in the finally! ------------");
+                        if (image != null) {
+                            image.close();
+                        }
+                    }
+                    if(bmp !=null){
+                        Log.e(TAG, "Decoding successful!");
+                    }else {
+                        Log.d(TAG, "No image was processing…");
+                    }
+                }
+
+            };
+
+    private final CameraCaptureSession.CaptureCallback mCaptureCallback =
+            new CameraCaptureSession.CaptureCallback() {
+                private void process(CaptureResult result) {
+                }
+
+                @Override
+                public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request,
+                                                CaptureResult partialResult) {
+                    process(partialResult);
+                }
+
+                @Override
+                public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request,
+                                               TotalCaptureResult result) {
+                    process(result);
+                }
+
+            };
     //Wyświetlanie obrazu z kamery w widoku
     protected void updatePreview() {
         if (null == cameraDevice) {
@@ -392,7 +538,7 @@ public class AndroidCameraApi extends AppCompatActivity {
             cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, mBackgroundHandler);
 
 
-            takePicture();
+//            takePicture();
 
 
         } catch (CameraAccessException e) {
