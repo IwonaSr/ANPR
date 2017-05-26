@@ -1,15 +1,18 @@
 package com.example.ejwon.anpr;
 
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.media.Image;
 import android.util.Log;
 
 import org.opencv.android.Utils;
+import org.opencv.core.Core;
 import org.opencv.core.CvException;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
@@ -23,7 +26,7 @@ public final class ImageFormatConversion {
     private static final String TAG = "Save Bitmap as Image";
 
     //http://answers.opencv.org/question/61628/android-camera2-yuv-to-rgb-conversion-turns-out-green/?answer=100322#post-id-100322
-    public static Mat convertYuv420888ToMat(Image image, boolean isGreyOnly){
+    public static Mat convertYuv420888ToMat(Image image, boolean isGreyOnly) {
         int width = image.getWidth();
         int height = image.getHeight();
         Mat yuvMat;
@@ -31,85 +34,140 @@ public final class ImageFormatConversion {
         Image.Plane yPlane = image.getPlanes()[0];
         int ySize = yPlane.getBuffer().remaining();
 
-            if (isGreyOnly) {
-                byte[] data = new byte[ySize];
-                yPlane.getBuffer().get(data, 0, ySize);
-
-                Mat greyMat = new Mat(height, width, CvType.CV_8UC1);
-                greyMat.put(0, 0, data);
-
-                return greyMat;
-            }
-
-            Image.Plane uPlane = image.getPlanes()[1];
-            Image.Plane vPlane = image.getPlanes()[2];
-
-            // be aware that this size does not include the padding at the end, if there is any
-            // (e.g. if pixel stride is 2 the size is ySize / 2 - 1)
-            int uSize = uPlane.getBuffer().remaining();
-            int vSize = vPlane.getBuffer().remaining();
-            byte[] data = new byte[ySize + (ySize/2)];
-
+        if (isGreyOnly) {
+            byte[] data = new byte[ySize];
             yPlane.getBuffer().get(data, 0, ySize);
-            ByteBuffer ub = uPlane.getBuffer();
-            ByteBuffer vb = vPlane.getBuffer();
 
-            int uvPixelStride = uPlane.getPixelStride(); //stride guaranteed to be the same for u and v planes
-            if (uvPixelStride == 1) {
-                uPlane.getBuffer().get(data, ySize, uSize);
-                vPlane.getBuffer().get(data, ySize + uSize, vSize);
+            Mat greyMat = new Mat(height, width, CvType.CV_8UC1);
+            Mat mYuv = new Mat(height + height / 2, width, CvType.CV_8UC1);
+            mYuv.put(0, 0, data);
+            Imgproc.cvtColor(mYuv, greyMat, Imgproc.COLOR_YUV420sp2GRAY);
+            //Rotate YUV image(grayscale) because
+            greyMat = rotateMat(greyMat, 90);
+            return greyMat;
+        }
 
-                yuvMat = new Mat(height + (height / 2), width, CvType.CV_8UC1);
-                yuvMat.put(0, 0, data);
+        //PONIŻEJ KOD JEST ZLY
+        Image.Plane uPlane = image.getPlanes()[1];
+        Image.Plane vPlane = image.getPlanes()[2];
 
-                Mat mGray = new Mat(height, width, CvType.CV_8UC1); // 8 bit 1 kanał szare
-                Imgproc.cvtColor(yuvMat, mGray, Imgproc.COLOR_YUV420sp2GRAY);
-//                Mat rgbMat = new Mat(height, width, CvType.CV_8UC3);
-//                Imgproc.cvtColor(yuvMat, rgbMat, Imgproc.COLOR_YUV2RGB_I420, 3);
-                yuvMat.release();
-                return mGray;
-            }
+        // be aware that this size does not include the padding at the end, if there is any
+        // (e.g. if pixel stride is 2 the size is ySize / 2 - 1)
+        int uSize = uPlane.getBuffer().remaining();
+        int vSize = vPlane.getBuffer().remaining();
+        byte[] data = new byte[ySize + (ySize / 2)];
 
-            // if pixel stride is 2 there is padding between each pixel
-            // converting it to NV21 by filling the gaps of the v plane with the u values
-            vb.get(data, ySize, vSize);
-            for (int i = 0; i < uSize; i += 2) {
-                data[ySize + i + 1] = ub.get(i);
-            }
+        yPlane.getBuffer().get(data, 0, ySize);
+        ByteBuffer ub = uPlane.getBuffer();
+        ByteBuffer vb = vPlane.getBuffer();
+
+        int uvPixelStride = uPlane.getPixelStride(); //stride guaranteed to be the same for u and v planes
+        if (uvPixelStride == 1) {
+            uPlane.getBuffer().get(data, ySize, uSize);
+            vPlane.getBuffer().get(data, ySize + uSize, vSize);
 
             yuvMat = new Mat(height + (height / 2), width, CvType.CV_8UC1);
             yuvMat.put(0, 0, data);
 
-            //CONVERT TO RGB
+            Mat mGray = new Mat(height, width, CvType.CV_8UC1); // 8 bit 1 kanał szare
+            Imgproc.cvtColor(yuvMat, mGray, Imgproc.COLOR_YUV420sp2GRAY);
+//                Mat rgbMat = new Mat(height, width, CvType.CV_8UC3);
+//                Imgproc.cvtColor(yuvMat, rgbMat, Imgproc.COLOR_YUV2RGB_I420, 3);
+            yuvMat.release();
+            return mGray;
+        }
+
+        // if pixel stride is 2 there is padding between each pixel
+        // converting it to NV21 by filling the gaps of the v plane with the u values
+        vb.get(data, ySize, vSize);
+        for (int i = 0; i < uSize; i += 2) {
+            data[ySize + i + 1] = ub.get(i);
+        }
+
+        yuvMat = new Mat(height + (height / 2), width, CvType.CV_8UC1);
+        yuvMat.put(0, 0, data);
+
+        //CONVERT TO RGB
 //            Mat rgbMat = new Mat(height, width, CvType.CV_8UC3);
 //            Imgproc.cvtColor(yuvMat, rgbMat, Imgproc.COLOR_YUV2RGB_NV21, 3);
 //            yuvMat.release();
-            Mat mGray = new Mat(height, width, CvType.CV_8UC1); // 8 bit 1 kanał szare
-            Imgproc.cvtColor(yuvMat, mGray, Imgproc.COLOR_YUV420sp2GRAY);
+        Mat mGray = new Mat(height, width, CvType.CV_8UC1); // 8 bit 1 kanał szare
+        Imgproc.cvtColor(yuvMat, mGray, Imgproc.COLOR_YUV420sp2GRAY);
 
-            return yuvMat;
+        return yuvMat;
     }
 
-    public static Bitmap getBitmapFromMat(Mat tmp){
+    public static Mat rotateMat(Mat src, int angle){
+
+        Mat dst = new Mat();
+        if(angle == 270 || angle == -90){
+            // Rotate clockwise 270 degrees
+            Core.transpose(src, dst);
+            Core.flip(dst, dst, 0);
+        }else if(angle == 180 || angle == -180){
+            // Rotate clockwise 180 degrees
+            Core.flip(src, dst, -1);
+        }else if(angle == 90 || angle == -270){
+            // Rotate clockwise 90 degrees
+            Core.transpose(src, dst);
+            Core.flip(dst, dst, 1);
+        }else if(angle == 360 || angle == 0 || angle == -360){
+                src.copyTo(dst);
+        }
+        return dst;
+    }
+
+    public static byte[] getAllBytesFromYUVImage(Image mImage) {
+        ByteBuffer buffer;
+        byte[] bytes = null;
+        for (int i = 0; i < 3; i++) {
+            buffer = mImage.getPlanes()[i].getBuffer();
+            bytes = new byte[buffer.remaining()]; // makes byte array large enough to hold image
+            buffer.get(bytes); // copies image from
+        }
+        return bytes;
+    }
+    public static byte[] getByteFromImage(Image image) {
+        Image.Plane yPlane = image.getPlanes()[0];
+        int ySize = yPlane.getBuffer().remaining();
+        byte[] data = new byte[ySize];
+        yPlane.getBuffer().get(data, 0, ySize);
+        return data;
+    }
+
+    // convert from bitmap to byte array
+    public static byte[] getBytesFromBitmap(Bitmap bitmap) {
+        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, stream);
+        return stream.toByteArray();
+    }
+
+    public static Bitmap getBitmapFromBytes(byte[] data) {
+//        Bitmap bmp = Bitmap.createBitmap(imageWidth, imageHeight, Bitmap.Config.ARGB_8888)
+        Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
+        return bmp;
+    }
+
+    public static Bitmap getBitmapFromMat(Mat tmp) {
 
         Bitmap bmp = null;
         try {
             bmp = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
             Utils.matToBitmap(tmp, bmp);
             return bmp;
-        }
-        catch (CvException e){
-            Log.d("Exception",e.getMessage());
+        } catch (CvException e) {
+            Log.d("Exception", e.getMessage());
         }
 
-        return null;
+        return bmp;
     }
 
 
-    public static void saveBitmapAsJpegFile(Bitmap bm, File myDir){
+    public static void saveBitmapAsJpegFile(Bitmap bm, File myDir) {
 
         Random generator = new Random();
         int n = 10000;
+
         n = generator.nextInt(n);
         String fname = "Image-" + n + ".jpg";
         File file = new File(myDir, fname);
@@ -125,6 +183,7 @@ public final class ImageFormatConversion {
             e.printStackTrace();
         }
     }
+
     private byte[] toByteArray(Image image, File destination) {
 
         Image.Plane yPlane = image.getPlanes()[0];
@@ -138,7 +197,7 @@ public final class ImageFormatConversion {
         int uSize = uPlane.getBuffer().remaining();
         int vSize = vPlane.getBuffer().remaining();
 
-        byte[] data = new byte[ySize + (ySize/2)];
+        byte[] data = new byte[ySize + (ySize / 2)];
 
         yPlane.getBuffer().get(data, 0, ySize);
 
@@ -151,8 +210,7 @@ public final class ImageFormatConversion {
 
             uPlane.getBuffer().get(data, ySize, uSize);
             vPlane.getBuffer().get(data, ySize + uSize, vSize);
-        }
-        else {
+        } else {
 
             // if pixel stride is 2 there is padding between each pixel
             // converting it to NV21 by filling the gaps of the v plane with the u values
@@ -165,7 +223,7 @@ public final class ImageFormatConversion {
         return data;
     }
 
-    public static int[] getRGBIntFromPlanes(int mHeight, Image.Plane[] planes){
+    public static int[] getRGBIntFromPlanes(int mHeight, Image.Plane[] planes) {
 
         ByteBuffer yPlane = planes[0].getBuffer();
         ByteBuffer uPlane = planes[1].getBuffer();       // The U (Cr) plane
@@ -181,7 +239,7 @@ public final class ImageFormatConversion {
             int uvPos = (i >> 1) * width;
 
             for (int j = 0; j < width; j++) {
-                if (uvPos >= uvCapacity-1)
+                if (uvPos >= uvCapacity - 1)
                     break;
                 if (yPos >= total)
                     break;
@@ -196,7 +254,7 @@ public final class ImageFormatConversion {
                   but keep the offset of the interleaving.
                  */
                 final int u = (uPlane.get(uvPos) & 0xff) - 128;
-                final int v = (vPlane.get(uvPos+1) & 0xff) - 128;
+                final int v = (vPlane.get(uvPos + 1) & 0xff) - 128;
                 if ((j & 1) == 1) {
                     uvPos += 2;
                 }
