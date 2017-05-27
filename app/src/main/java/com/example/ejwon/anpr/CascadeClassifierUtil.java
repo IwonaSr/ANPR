@@ -17,11 +17,10 @@ import java.io.InputStream;
 public final class CascadeClassifierUtil {
 
     private static File mCascadeFile;
-    private static CascadeClassifier mJavaDetector;
     private static final String TAG = "MainActivity.java";
 
-    public static void loadCascadeClassifier(Resources resources, Context context) {
-
+    public static CascadeClassifier loadCascadeClassifier(Resources resources, Context context) {
+        CascadeClassifier mJavaDetector = null;
         try {
             // Load Haar training result file from application resources
             // This file from opencv_traincascade tool.
@@ -40,8 +39,10 @@ public final class CascadeClassifierUtil {
             is.close();
             os.close();
 
-            mJavaDetector = new org.opencv.objdetect.CascadeClassifier(
+            mJavaDetector = new CascadeClassifier(
                     mCascadeFile.getAbsolutePath());
+            //new line added
+            mJavaDetector.load(mCascadeFile.getAbsolutePath());
             if (mJavaDetector.empty()) {
                 Log.e(TAG, "Failed to load cascade classifier");
                 mJavaDetector = null;
@@ -54,6 +55,7 @@ public final class CascadeClassifierUtil {
             e.printStackTrace();
             Log.e(TAG, "Failed to load cascade. Exception thrown: " + e);
         }
+        return mJavaDetector;
 
     }
 }

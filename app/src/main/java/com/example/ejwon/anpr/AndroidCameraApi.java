@@ -6,7 +6,6 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
-import android.graphics.Point;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
@@ -42,6 +41,7 @@ import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Mat;
+import org.opencv.objdetect.CascadeClassifier;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -72,9 +72,7 @@ public class AndroidCameraApi extends AppCompatActivity {
 
     protected CameraDevice cameraDevice;
     protected CameraCaptureSession cameraCaptureSessions;
-    protected CaptureRequest captureRequest;
     protected CaptureRequest.Builder captureRequestBuilder;
-    private Size imageDimension;
     private ImageReader imageReader;
     private File file;
     private static final int REQUEST_CAMERA_PERMISSION = 200;
@@ -82,14 +80,12 @@ public class AndroidCameraApi extends AppCompatActivity {
     private Handler mBackgroundHandler;
     private HandlerThread mBackgroundThread;
     private static final int mImageFormat = ImageFormat.YUV_420_888;
-    private int mHeigth;
-    int[] mRgbBuffer;
+    private int mAbsolutePlateSize = 0;
     public File folder;
     int i = 0;
     private int count = 0;
     private int rotation = 0;
-//    private Size[] jpegSizes = null;
-    public static Point screenParametersPoint = new Point();
+    private CascadeClassifier mJavaDetector;
     /**
      * Max preview width that is guaranteed by Camera2 API
      */
@@ -112,23 +108,25 @@ public class AndroidCameraApi extends AppCompatActivity {
                 getApplicationContext(),
                 mOpenCVCallBack);
 
-        if (checkOpenCV) {
+        if (checkOpenCV)
+        {
             try {
+                textureView.setSurfaceTextureListener(textureListener);
+                takePictureButton = (Button) findViewById(R.id.btn_takepicture);
+                assert takePictureButton != null;
+                takePictureButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+//                takePicture();
+                    }
+                });
 
             } catch (Exception e1) {
                 Log.e("MissingOpenCVManager", e1.toString());
             }
         }
 
-        textureView.setSurfaceTextureListener(textureListener);
-        takePictureButton = (Button) findViewById(R.id.btn_takepicture);
-        assert takePictureButton != null;
-        takePictureButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-//                takePicture();
-            }
-        });
+
     }
 
     private BaseLoaderCallback mOpenCVCallBack = new BaseLoaderCallback(this) {
@@ -138,7 +136,7 @@ public class AndroidCameraApi extends AppCompatActivity {
                 case LoaderCallbackInterface.SUCCESS: {
                     Log.i(TAG, "OpenCV loaded successfully");
                     //Load Cascade Classifier
-                    CascadeClassifierUtil.loadCascadeClassifier(getResources(), getApplicationContext());
+                    mJavaDetector = CascadeClassifierUtil.loadCascadeClassifier(getResources(), getApplicationContext());
                 }
                 break;
                 default: {
@@ -486,8 +484,9 @@ public class AndroidCameraApi extends AppCompatActivity {
                         int height = image.getHeight();
                         if (image.getFormat() == mImageFormat) {
                             Log.e(TAG, " process image, i: " + i);
-                            Mat matImage = ImageFormatConversion.convertYuv420888ToMat(image, true);
-                            bmp = ImageFormatConversion.getBitmapFromMat(matImage);
+                            Mat mGray = ImageFormatConversion.convertYuv420888ToMat(image, true);
+                            ImageProcessing.detectNumberPlate(mGray, mJavaDetector);
+                            bmp = ImageFormatConversion.getBitmapFromMat(mGray);
                             ImageFormatConversion.saveBitmapAsJpegFile(bmp, folder);
                         }
 
@@ -574,6 +573,14 @@ public class AndroidCameraApi extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         Log.e(TAG, "onResume");
+        if (!OpenCVLoader.initDebug()) {
+            Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mOpenCVCallBack);
+
+        } else {
+            Log.d(TAG, "OpenCV library found inside package. Using it!");
+            mOpenCVCallBack.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+        }
         startBackgroundThread();
         if (textureView.isAvailable()) {
             setUpCameraOutputs(textureView.getWidth(), textureView.getHeight());
@@ -581,6 +588,7 @@ public class AndroidCameraApi extends AppCompatActivity {
         } else {
             textureView.setSurfaceTextureListener(textureListener);
         }
+
     }
 
     @Override

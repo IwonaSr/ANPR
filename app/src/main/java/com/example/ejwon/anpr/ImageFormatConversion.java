@@ -30,6 +30,7 @@ public final class ImageFormatConversion {
         int width = image.getWidth();
         int height = image.getHeight();
         Mat yuvMat;
+        Mat grayMat = new Mat(height, width, CvType.CV_8UC1);;
 
         Image.Plane yPlane = image.getPlanes()[0];
         int ySize = yPlane.getBuffer().remaining();
@@ -38,13 +39,12 @@ public final class ImageFormatConversion {
             byte[] data = new byte[ySize];
             yPlane.getBuffer().get(data, 0, ySize);
 
-            Mat greyMat = new Mat(height, width, CvType.CV_8UC1);
             Mat mYuv = new Mat(height + height / 2, width, CvType.CV_8UC1);
             mYuv.put(0, 0, data);
-            Imgproc.cvtColor(mYuv, greyMat, Imgproc.COLOR_YUV420sp2GRAY);
+            Imgproc.cvtColor(mYuv, grayMat, Imgproc.COLOR_YUV420sp2GRAY);
             //Rotate YUV image(grayscale) because
-            greyMat = rotateMat(greyMat, 90);
-            return greyMat;
+            grayMat = rotateMat(grayMat, 90);
+            return grayMat;
         }
 
         //PONIŻEJ KOD JEST ZLY
@@ -74,7 +74,7 @@ public final class ImageFormatConversion {
 //                Mat rgbMat = new Mat(height, width, CvType.CV_8UC3);
 //                Imgproc.cvtColor(yuvMat, rgbMat, Imgproc.COLOR_YUV2RGB_I420, 3);
             yuvMat.release();
-            return mGray;
+            return grayMat;
         }
 
         // if pixel stride is 2 there is padding between each pixel
@@ -94,7 +94,7 @@ public final class ImageFormatConversion {
         Mat mGray = new Mat(height, width, CvType.CV_8UC1); // 8 bit 1 kanał szare
         Imgproc.cvtColor(yuvMat, mGray, Imgproc.COLOR_YUV420sp2GRAY);
 
-        return yuvMat;
+        return grayMat;
     }
 
     public static Mat rotateMat(Mat src, int angle){
