@@ -17,7 +17,7 @@ import java.io.InputStream;
 public final class CascadeClassifierUtil {
 
     private static File mCascadeFile;
-    private static final String TAG = "MainActivity.java";
+    private static final String TAG = "CascadeClass.java";
 
     public static CascadeClassifier loadCascadeClassifier(Resources resources, Context context) {
         CascadeClassifier mJavaDetector = null;
@@ -28,7 +28,14 @@ public final class CascadeClassifierUtil {
             InputStream is = resources.openRawResource(R.raw.europe);
 
             File cascadeDir = context.getDir("cascade", Context.MODE_PRIVATE);
+            Log.d(TAG, "cascadeDir: " + cascadeDir);
+
             mCascadeFile = new File(cascadeDir, "europe.xml"); // Load XML file according to R.raw.cascade
+            if(mCascadeFile != null){
+                Log.d(TAG, "mCascadeFile.exitst: " + mCascadeFile);
+
+            }
+
             FileOutputStream os = new FileOutputStream(mCascadeFile);
 
             byte[] buffer = new byte[4096];
@@ -50,7 +57,7 @@ public final class CascadeClassifierUtil {
                 Log.i(TAG, "Loaded cascade classifier from "
                         + mCascadeFile.getAbsolutePath());
 
-            cascadeDir.delete();
+//            cascadeDir.delete();
         }catch(IOException e){
             e.printStackTrace();
             Log.e(TAG, "Failed to load cascade. Exception thrown: " + e);

@@ -1,75 +1,154 @@
 package com.example.ejwon.anpr;
 
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
+import com.example.ejwon.anpr.common.Utils;
+import com.example.ejwon.anpr.interfaces.OnTaskCompleted;
+
 import org.opencv.core.MatOfRect;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
-import org.opencv.core.Size;
-import org.opencv.imgproc.Imgproc;
-import org.opencv.objdetect.CascadeClassifier;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by Ejwon on 2017-03-05.
+ * Created by Ejwon on 2017-03-11.
  */
-public class PlateView extends View {
+public class PlateView extends View implements OnTaskCompleted {
 
-    Rect [] platesArray;
+    Rect[] platesArray;
+    private static final String TAG = "PlateView.java";
     List<Point> currentPlatePointList = new ArrayList<Point>();
     List<Rect> currentPlates = new ArrayList<Rect>();
-    private Mat mRgba;
-    private Mat mGray;
-    private CascadeClassifier mJavaDetector;
     MatOfRect plates;
-    private float mRelativePlateSize = 0.2f;
-    private int mAbsolutePlateSize = 0;
+    int number;
+    Utils utils;
+    List<Point> platePointList;
+    // Preparing for storing plate region
 
-    public PlateView(Context context) {
+    public PlateView(AndroidCameraApi context) {
         super(context);
+        this.setWillNotDraw(false);
     }
 
-    protected void processImage(byte[] data, int width, int height) {
+//    public void setPlate(MatOfRect plates, int number, Utils utils,  List<Point> platePointList) {
+    public void setUtils(Utils utils,  List<Point> platePointList) {
+//        this.plates = plates;
+//        this.number = number;
+        this.utils = utils;
+        this. platePointList = platePointList;
+    }
 
-        //downsampling, converting into grayscale
-        //Don't convert the image to gray scale right from start. You will loose the color information.
-        mRgba = new Mat(height, width, CvType.CV_8UC4); // unsigned 8 bit ( u - pozytywne), 4 kanałowe (0-255) RGBA - RGB z alfa (alfa 0-1)
-        mGray = new Mat(height, width, CvType.CV_8UC1); // 8 bit 1 kanał szare
+    public void setPlate(MatOfRect plates) {
+        this.plates = plates;
+    }
 
-        // wyodrebnieneii rgb na YUV w celu uzyskania 3 kanałów Y - luminacja (jasnoc-czarno białe) UV -kolorowe (chrominacji)
-        Mat mYuv = new Mat(height + height / 2, width, CvType.CV_8UC1);
-        mYuv.put(0, 0, data);
+    public PlateView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+    }
 
-        Imgproc.cvtColor(mYuv, mGray, Imgproc.COLOR_YUV420sp2GRAY); //konwersja koloru
-        Imgproc.cvtColor(mYuv, mRgba, Imgproc.COLOR_YUV2RGB_NV21, 3);
+    public PlateView(Context context, AttributeSet attrs, int defStyle) {
+        super(context, attrs, defStyle);
+    }
 
-        if (mAbsolutePlateSize == 0) {
-            int heightGray = mGray.rows();
-            if (Math.round(heightGray * mRelativePlateSize) > 0) {
-                mAbsolutePlateSize = Math.round(heightGray
-                        * mRelativePlateSize);
+    public PlateView(AndroidCameraApi context, MatOfRect plates) {
+//    public PlateView(AndroidCameraApi context, MatOfRect plates, int number) {
+        super(context);
+        plates = this.plates;
+//        number = this.number;
+    }
+
+
+    @Override
+    public void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        Paint paint = new Paint();
+        paint.setColor(Color.GREEN);
+        paint.setTextSize(20);
+        Log.d(TAG, "On draw");
+
+        //wyświetlanie kwadratu
+//        if (number != 0) {
+//            Log.d(TAG, "Number: " + number);
+//
+//
+//            float leftx = 100;
+//            float topy = 100;
+//            float rightx = 200;
+//            float bottomy = 200;
+//            canvas.drawRect(leftx, topy, rightx, bottomy, paint);
+//
+//        }
+
+
+        if (plates != null) {
+
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(5);
+            Log.d(TAG, "Plates is not null; " + plates);
+
+            platesArray = plates.toArray();
+            Log.d(TAG, "platesArray: " + platesArray);
+            Log.d(TAG, "platesArray.length: " + platesArray.length);
+
+            boolean isHasNewPlate = false;
+            currentPlates.clear();
+
+            for (int i = 0; i < platesArray.length; i++) {
+                int x = platesArray[i].x;
+                Log.d(TAG, "platesArray[i].x: " + x);
+
+                int y = platesArray[i].y;
+                Log.d(TAG, "platesArray[i].y; " + y);
+
+                int w = platesArray[i].width;
+                Log.d(TAG, "platesArray[i].width; " + w);
+
+                int h = platesArray[i].height;
+                Log.d(TAG, "platesArray[i].heigh: " + h);
+
+
+                // Draw a Green Rectangle surrounding the Number Plate !
+                // Congratulations ! You found the plate area :-)
+                canvas.drawRect(x, y, (x + w), (y + h), paint);
+                Log.i("Plate found"," Found a plate !!!");
+
+                // isNewPlate?
+                Point platePoint = new Point(platesArray[i].x,
+                        platesArray[i].y);
+                currentPlatePointList.add(platePoint);
+                currentPlates.add(platesArray[i]);
+                if (utils.isNewPlate(platePointList, platePoint)) {
+                    isHasNewPlate = true;
+                }
             }
+
+            if (platesArray.length  > 0) {
+                platePointList.clear();
+                platePointList.addAll(currentPlatePointList);
+            } else {
+                platePointList.clear();
+            }
+
+            // If isHasNewPlate --> get sub images (ROI) --> Add to Adapter
+            // (from currentPlates)
+            if (isHasNewPlate) {
+                Log.e(TAG, "START DoOCR task!!!!");
+            }
+
         }
 
-        // This variable is used to to store the detected plates in the result
-        plates = new MatOfRect();
-
-        if (mJavaDetector != null)
-            mJavaDetector.detectMultiScale(
-                    mGray,
-                    plates,
-                    1.1,
-                    2,
-                    2,
-                    new Size(mAbsolutePlateSize, mAbsolutePlateSize),
-                    new Size()
-            );
     }
 
+    @Override
+    public void updateResult(String result) {
 
+    }
 }

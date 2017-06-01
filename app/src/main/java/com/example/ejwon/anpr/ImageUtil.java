@@ -55,4 +55,6 @@ public final class ImageUtil {
         yuv.compressToJpeg(new Rect(0, 0, width, height), 100, out);
         return out.toByteArray();
     }
+
+
 }

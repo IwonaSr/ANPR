@@ -24,7 +24,7 @@ import java.io.InputStream;
 public class MainActivity extends Activity {
     ImageView imageView;
     public Context context = this;
-    public DrawView drawView;
+    public PlateView drawView;
     public PlateView plateView;
     private static final String TAG = "MainActivity.java";
     private File mCascadeFile;
@@ -85,7 +85,7 @@ public class MainActivity extends Activity {
                     int w = b.getWidth();
                     int h = b.getHeight();
 
-                    plateView.processImage(convertImageToByteArray(b), w, h);
+//                    plateView.processImage(convertImageToByteArray(b), w, h);
 
                 } break;
                 default:
