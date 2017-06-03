@@ -217,8 +217,8 @@ public class AndroidCameraApi extends Activity {
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             //open your camera here
             setUpCameraOutputs(width, height);
-//            openCamera(width, height);
 //            configureTransform(width, height);
+            transformImage(width, height);
             openCamera();
 
         }
@@ -274,6 +274,28 @@ public class AndroidCameraApi extends Activity {
                 return 270;
         }
         return 0;
+    }
+
+    private void transformImage(int width, int height) {
+        if(mPreviewSize == null || textureView == null) {
+            return;
+        }
+        Matrix matrix = new Matrix();
+        int rotation = getWindowManager().getDefaultDisplay().getRotation();
+        RectF textureRectF = new RectF(0, 0, width, height);
+        RectF previewRectF = new RectF(0, 0, mPreviewSize.getHeight(), mPreviewSize.getWidth());
+        float centerX = textureRectF.centerX();
+        float centerY = textureRectF.centerY();
+        if(rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270) {
+            previewRectF.offset(centerX - previewRectF.centerX(),
+                    centerY - previewRectF.centerY());
+            matrix.setRectToRect(textureRectF, previewRectF, Matrix.ScaleToFit.FILL);
+            float scale = Math.max((float)width / mPreviewSize.getWidth(),
+                    (float)height / mPreviewSize.getHeight());
+            matrix.postScale(scale, scale, centerX, centerY);
+            matrix.postRotate(90 * (rotation - 2), centerX, centerY);
+        }
+        textureView.setTransform(matrix);
     }
 //    final CameraCaptureSession.CaptureCallback captureCallbackListener = new CameraCaptureSession.CaptureCallback() {
 //        @Override
@@ -601,6 +623,7 @@ public class AndroidCameraApi extends Activity {
         //zdjecie - zakomentuj nizej
         if (textureView.isAvailable()) {
             setUpCameraOutputs(textureView.getWidth(), textureView.getHeight());
+            transformImage(textureView.getWidth(), textureView.getHeight());
             openCamera();
         } else {
             textureView.setSurfaceTextureListener(textureListener);

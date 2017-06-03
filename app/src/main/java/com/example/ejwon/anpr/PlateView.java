@@ -118,6 +118,7 @@ public class PlateView extends View implements OnTaskCompleted {
                 // Draw a Green Rectangle surrounding the Number Plate !
                 // Congratulations ! You found the plate area :-)
                 canvas.drawRect(x, y, (x + w), (y + h), paint);
+                Log.i(TAG, "drawRect(x, y, (x + w), (y + h)" + x + ", " + y + ", " + (x + w) + ", " + (y + h));
                 Log.i("Plate found"," Found a plate !!!");
 
                 // isNewPlate?
