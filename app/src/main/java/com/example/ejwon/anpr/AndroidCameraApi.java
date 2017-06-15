@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
@@ -40,7 +41,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.ejwon.anpr.common.Utils;
+import com.example.ejwon.anpr.imageConversion.MatImage;
 import com.example.ejwon.anpr.imageLoader.ImageLoader;
+import com.hazuu.uitanpr.neural.KohonenNetwork;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
@@ -52,7 +55,12 @@ import org.opencv.core.Point;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -63,7 +71,11 @@ public class AndroidCameraApi extends Activity {
     private static final String TAG = "AndroidCameraApi";
     private RelativeLayout layout;
     private TextureView textureView;
+    KohonenNetwork net;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
+
+    public boolean isRunningTask = false;
+    public boolean isFail = false;
 
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
@@ -159,6 +171,39 @@ public class AndroidCameraApi extends Activity {
             // Preparing for storing plate region
             platePointList = new ArrayList<Point>();
             plateView.setUtils(utils, platePointList);
+
+            if (this.net == null) {
+                try {
+
+                    AssetManager assetManager = getAssets();
+                    InputStream in = assetManager.open("neural_net.ser");
+
+                    // START IMPORT TRAINED DATA TO NETWORK
+                    try {
+                        // use buffering
+                        InputStream buffer = new BufferedInputStream(in);
+                        ObjectInput input = new ObjectInputStream(buffer);
+                        try {
+                            // deserialize the List
+                            this.net = (KohonenNetwork) input.readObject();
+                            Log.i(TAG, String.valueOf(this.net.getMap()));
+                        } finally {
+                            input.close();
+                        }
+                    } catch (ClassNotFoundException ex) {
+                        Log.e(TAG, "Cannot perform input. Class not found.");
+                    } catch (IOException ex) {
+                        Log.e(TAG, "Cannot perform input." + ex.getMessage());
+                    }
+
+                    in.close();
+                    // gin.close();
+                    // out.close();
+                    Log.v(TAG, "Imported trained data");
+                } catch (IOException e) {
+                    Log.e(TAG, e.getMessage());
+                }
+            }
 
         }
 
@@ -520,11 +565,17 @@ public class AndroidCameraApi extends Activity {
 //                        save(bytes);
                         int width = image.getWidth();
                         int height = image.getHeight();
+                        MatImage matImage = new MatImage();
+
                         if (image.getFormat() == mImageFormat) {
                             Log.e(TAG, " process image, i: " + i);
-                            Mat mGray = ImageFormatConversion.convertYuv420888ToMat(image, true);
-                            ImageProcessing.detectNumberPlate(mGray, mJavaDetector, plateView);
-                            bmp = ImageFormatConversion.getBitmapFromMat(mGray);
+                            Mat mGray = ImageFormatConversion.convertYuv420888ToGrayMat(image);
+//                            Mat mRgb = ImageFormatConversion.convertYuv420888ToRgbMat(image);
+//                            Mat mRgb = ImageFormatConversion.greenRGb(image);
+//                            Mat mRgb = ImageFormatConversion.convertYuv420888TorgbMat(image);
+                            ImageProcessing.detectNumberPlate(mGray, mJavaDetector, plateView, net);
+//                            bmp = ImageFormatConversion.getBitmapFromMat(mGray);
+//                            bmp = ImageFormatConversion.getBitmapFromMat(mRgb);
 //                            ImageFormatConversion.saveBitmapAsJpegFile(bmp, folder);
                         }
 

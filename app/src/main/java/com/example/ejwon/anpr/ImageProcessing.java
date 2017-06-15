@@ -2,6 +2,8 @@ package com.example.ejwon.anpr;
 
 import android.util.Log;
 
+import com.hazuu.uitanpr.neural.KohonenNetwork;
+
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfRect;
 import org.opencv.core.Size;
@@ -21,7 +23,7 @@ public final class ImageProcessing {
 
 
 //    public static void detectNumberPlate(Mat mGray, CascadeClassifier mJavaDetector, PlateView plateView, ImageView imageView) { //jesli zdjecie
-    public static void detectNumberPlate(Mat mGray, CascadeClassifier mJavaDetector, PlateView plateView) {
+    public static void detectNumberPlate(Mat mGray, CascadeClassifier mJavaDetector, PlateView plateView, KohonenNetwork net) {
 
         if (mAbsolutePlateSize == 0) {
             int heightGray = mGray.rows();
@@ -49,6 +51,8 @@ public final class ImageProcessing {
 
 
         plateView.setPlate(plates);
+        plateView.setGrayMat(mGray);
+        plateView.setNetwork(net);
         //draw on camera output
         plateView.postInvalidate(); //camera
 

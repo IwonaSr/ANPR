@@ -8,9 +8,12 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 
+import com.example.ejwon.anpr.OCRRecognition.OCRRecognition;
 import com.example.ejwon.anpr.common.Utils;
 import com.example.ejwon.anpr.interfaces.OnTaskCompleted;
+import com.hazuu.uitanpr.neural.KohonenNetwork;
 
+import org.opencv.core.Mat;
 import org.opencv.core.MatOfRect;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
@@ -28,9 +31,15 @@ public class PlateView extends View implements OnTaskCompleted {
     List<Point> currentPlatePointList = new ArrayList<Point>();
     List<Rect> currentPlates = new ArrayList<Rect>();
     MatOfRect plates;
+    Mat mGray;
     int number;
     Utils utils;
     List<Point> platePointList;
+    public boolean isFail = false;
+    KohonenNetwork net;
+
+    public boolean isRunningTask = false;
+
     // Preparing for storing plate region
 
     public PlateView(AndroidCameraApi context) {
@@ -48,6 +57,12 @@ public class PlateView extends View implements OnTaskCompleted {
 
     public void setPlate(MatOfRect plates) {
         this.plates = plates;
+    }
+
+    public void setNetwork(KohonenNetwork net) { this.net = net; }
+
+    public void setGrayMat (Mat mGray) {
+        this.mGray = mGray;
     }
 
     public PlateView(Context context, AttributeSet attrs) {
@@ -140,8 +155,9 @@ public class PlateView extends View implements OnTaskCompleted {
 
             // If isHasNewPlate --> get sub images (ROI) --> Add to Adapter
             // (from currentPlates)
-            if (isHasNewPlate) {
+            if ((isHasNewPlate || isFail) && !isRunningTask) {
                 Log.e(TAG, "START DoOCR task!!!!");
+                new OCRRecognition(currentPlates, mGray, isRunningTask, this, net, utils).execute();
             }
 
         }
