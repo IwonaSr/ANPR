@@ -6,10 +6,12 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
+import android.graphics.Typeface;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -43,6 +45,7 @@ import android.widget.Toast;
 import com.example.ejwon.anpr.common.Utils;
 import com.example.ejwon.anpr.imageConversion.MatImage;
 import com.example.ejwon.anpr.imageLoader.ImageLoader;
+import com.example.ejwon.anpr.interfaces.OnTaskCompleted;
 import com.hazuu.uitanpr.neural.KohonenNetwork;
 
 import org.opencv.android.BaseLoaderCallback;
@@ -67,7 +70,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-public class AndroidCameraApi extends Activity {
+public class AndroidCameraApi extends Activity implements OnTaskCompleted{
     private static final String TAG = "AndroidCameraApi";
     private RelativeLayout layout;
     private TextureView textureView;
@@ -105,6 +108,7 @@ public class AndroidCameraApi extends Activity {
     private CascadeClassifier mJavaDetector;
     PlateView plateView;
     MatOfRect plates;
+    TextView resultOCR;
     Utils utils;
     TextView foundNumberPlate;
 
@@ -152,7 +156,6 @@ public class AndroidCameraApi extends Activity {
                 utils = new Utils(getBaseContext());// wyświetlenie zdjecia
                 plateView = new PlateView(this, plates);// wyświetlenie zdjecia
                 assert textureView != null;           // wyświetlenie zdjecia
-
                 //jesli komibinujemy z dodawaniem widoków
 ////                layout.removeView(textureView);
 ////                layout.removeAllViews();
@@ -161,6 +164,16 @@ public class AndroidCameraApi extends Activity {
                 //
 
                 layout.addView(plateView, 1); // wyświetlenie zdjecia
+                resultOCR = new TextView(getApplicationContext());
+                layout.addView(resultOCR, 2);
+                RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(
+                        resultOCR.getLayoutParams());
+                resultOCR.setTextSize(30);
+                resultOCR.setBackgroundColor(Color.WHITE);
+                resultOCR.setTextColor(Color.RED);
+                resultOCR.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                resultOCR.setLayoutParams(lp);
+                plateView.setResultOCR(resultOCR);
                 textureView.setSurfaceTextureListener(textureListener); //camera
 
 
@@ -434,6 +447,11 @@ public class AndroidCameraApi extends Activity {
             e.printStackTrace();
         }
         Log.e(TAG, "openCamera X");
+    }
+
+    @Override
+    public void updateResult(String result) {
+        resultOCR.setText(result);
     }
 
     static class CompareSizeByArea implements Comparator<Size> {

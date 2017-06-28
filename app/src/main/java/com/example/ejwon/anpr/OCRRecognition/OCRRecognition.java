@@ -105,6 +105,19 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                     255, Imgproc.ADAPTIVE_THRESH_MEAN_C,
                     Imgproc.THRESH_BINARY, 85, 5); //binaryzacja obrazu w skali szarości - pięknie zbinaryzowane - OK
 
+                        //dopisane -- zbinaryzowana tablica na 0 i 1
+                        Bitmap imageBitmap = Bitmap.createBitmap(
+                                plateImageResized.width(),
+                                plateImageResized.height(),
+                                Bitmap.Config.ARGB_8888);
+
+                        org.opencv.android.Utils.matToBitmap(
+                                plateImageResized, imageBitmap);
+
+                        File folder = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_plate2/"); //tablica
+                     folder.mkdir();
+            ImageFormatConversion.saveBitmapAsJpegFile(imageBitmap, folder);
+
             List<MatOfPoint> contours = new ArrayList<MatOfPoint>(); //rozpoznane kontury, vector of points
 
             Mat hierarchy = new Mat(plateImageResized.rows(),
@@ -112,7 +125,22 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                     new Scalar(0));
 
             Imgproc.findContours(plateImageResized, contours, hierarchy,
-                    Imgproc.CHAIN_APPROX_SIMPLE, Imgproc.RETR_LIST);
+                    Imgproc.CHAIN_APPROX_SIMPLE, Imgproc.RETR_LIST); //kolejnosc zamieniona? Aprox i retr list?
+
+
+
+            //dopisane - lekko zbinaryzowane, wiecej niz 2 kolory
+                        Bitmap imageBitmap2 = Bitmap.createBitmap(
+                                plateImageResized.width(),
+                                plateImageResized.height(),
+                                Bitmap.Config.ARGB_8888);
+
+                        org.opencv.android.Utils.matToBitmap(
+                                plateImageResized, imageBitmap2);
+
+                        File folder2 = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_contours2"); //sprawdzenie wyciętych liter
+                        folder2.mkdir();
+                        ImageFormatConversion.saveBitmapAsJpegFile(imageBitmap2, folder2);
 
             String recognizedText = "";
             timeRequired = System.currentTimeMillis() - start;
@@ -158,42 +186,98 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                                 plateImageResized.type());
 
                         charImage = plateImageResized.submat(cr);
+                        Log.e(TAG, "Channels of CharImage: " + charImage.channels());
 
-
-                        //dopisane
-                        Bitmap imageBitmap = Bitmap.createBitmap(
+                        //dopisane -- Litery wyciete, więcej niz 2 kolory ale blizej binaryzacji -- Prawie OK
+                        Bitmap imageBitmap3 = Bitmap.createBitmap(
                                 charImage.width(),
                                 charImage.height(),
                                 Bitmap.Config.ARGB_8888);
 
                         org.opencv.android.Utils.matToBitmap(
-                                charImage, imageBitmap);
+                                charImage, imageBitmap3);
 
-                        File folder = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR/"); //sprawdzenie wyciętych liter
-                        ImageFormatConversion.saveBitmapAsJpegFile(imageBitmap, folder);
+                        File folder3 = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_znaki2/");
+                        folder3.mkdir();
+                        ImageFormatConversion.saveBitmapAsJpegFile(imageBitmap3, folder3);
 
+                            //potrzebne jeśli konwertujemy z BGR to GRAY
+//                        Mat charImageGrey = new Mat(charImage.size(),
+//                                charImage.type());
 
-                        Mat charImageGrey = new Mat(charImage.size(),
-                                charImage.type());
+                        //odkomentowanie spowoduje blad liczby kanałow (channels), mamy 1 kanałowy
 //                        Imgproc.cvtColor(charImage, charImageGrey,
 //                                Imgproc.COLOR_BGR2GRAY, 1);
+//                        Imgproc.adaptiveThreshold(charImage,
+//                                charImage, 255,
+//                                Imgproc.ADAPTIVE_THRESH_MEAN_C,
+//                                Imgproc.THRESH_BINARY, 203, 5);
 
-                        Imgproc.adaptiveThreshold(charImageGrey,
-                                charImageGrey, 255,
+  /*                     2 wersja
+                        //45
+                        Imgproc.threshold(charImage, charImage, 15, 255, Imgproc.THRESH_BINARY);
+
+                        //print threshold binary images
+                        Bitmap charImageBitmap3 = Bitmap.createBitmap(
+                                charImage.width(),
+                                charImage.height(),
+                                Bitmap.Config.ARGB_8888);
+                        org.opencv.android.Utils.matToBitmap(
+                                charImage, charImageBitmap3);
+                        File folder3 = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_thresholdCharacter3/"); //sprawdzenie wyciętych liter
+                        folder3.mkdirs();
+                        ImageFormatConversion.saveBitmapAsJpegFile(charImageBitmap3, folder3);
+
+                        //oryginalnie bylo 85, 5
+                        Imgproc.adaptiveThreshold(charImage,
+                                charImage, 255,
                                 Imgproc.ADAPTIVE_THRESH_MEAN_C,
-                                Imgproc.THRESH_BINARY, 85, 5);
+                                Imgproc.THRESH_BINARY, 203, 5);
+                        //dla 215 rozpoznalo T
+                        // dla 201, 5 najbardziej rozpoznaje literkę A, dodatkowo zamiastt O, U tez rozpoznało, D zamias
+                        //Gaussian na pewno nie jest dobry!
+
+                        //print threshold binary images
+                        Bitmap charImageBitmap4 = Bitmap.createBitmap(
+                                charImage.width(),
+                                charImage.height(),
+                                Bitmap.Config.ARGB_8888);
+                        org.opencv.android.Utils.matToBitmap(
+                                charImage, charImageBitmap4);
+                        File folder4 = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_thresholdCharacter4/"); //sprawdzenie wyciętych liter
+                        folder4.mkdirs();
+                        ImageFormatConversion.saveBitmapAsJpegFile(charImageBitmap4, folder4);
+
+                        Imgproc.adaptiveThreshold(charImage,
+                                charImage, 255,
+                                Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                Imgproc.THRESH_BINARY, 203, 5);
+                                */
+
+                        //3 wersja - pogrubione krawędzie, nie rozpoznaje liter
+                        //global -73 - prawie OK, 45 spoko ale nic nie rozpoznaje
+                        //litery są wyodrebnione, pogrubione, niestety nie wykrywa
+                        Imgproc.threshold(charImage, charImage, 45, 255, Imgproc.THRESH_BINARY);
+                        Imgproc.threshold(charImage, charImage, 0, 255, Imgproc.THRESH_OTSU);
+                        org.opencv.core.Size s = new Size(5,5);
+                        Imgproc.GaussianBlur(charImage,charImage,s,0);
+                        Imgproc.threshold(charImage, charImage, 0, 255, Imgproc.THRESH_OTSU);
+                        // 3 wersja
+
 
                         Bitmap charImageBitmap = Bitmap.createBitmap(
-                                charImageGrey.width(),
-                                charImageGrey.height(),
+                                charImage.width(),
+                                charImage.height(),
                                 Bitmap.Config.ARGB_8888);
 
                         //possible characters
                         org.opencv.android.Utils.matToBitmap(
-                                charImageGrey, charImageBitmap);
+                                charImage, charImageBitmap);
+                        Log.e(TAG, "Before save");
 
-//                        File folder = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR/"); //sprawdzenie wyciętych liter
-//                        ImageFormatConversion.saveBitmapAsJpegFile(charImageBitmap, folder);
+                        File folder5 = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_threshold_second2/"); //sprawdzenie wyciętych liter
+                        folder5.mkdirs();
+                        ImageFormatConversion.saveBitmapAsJpegFile(charImageBitmap, folder5);
 
                         tempBitmap = new BitmapWithCentroid(
                                 charImageBitmap, centroid);
@@ -210,6 +294,7 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
             start = System.currentTimeMillis();
             Collections.sort(charList);
 
+            //DOWNSAMPLE_WIDTH oraz DOWNSAMPLE_HEIGHT wymiar gridu w do którego zmniejszamy znak - downsampling image
             SampleData data = new SampleData('?', DOWNSAMPLE_WIDTH,
                     DOWNSAMPLE_HEIGHT);
 
@@ -241,7 +326,8 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                         }
                     }
                 }
-
+            //downsampling //https://www.youtube.com/watch?v=Sq_PrLNLLMU
+                // if pixel is solid 0.5 if not -0.5 (0.5 black pixel, -0.5 white pixel)
                 final double input[] = new double[20 * 50];
                 int idx = 0;
                 for (int yy = 0; yy < data.getHeight(); yy++) {
@@ -261,6 +347,7 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                 }
 
                 int best = net.winner(input, normfac, synth); //rozpoznawanie litery z jakis danych
+                //input neuron,method indentify which of the 35 neurons won, store this information in the best integer
 
                 recognizedText += net.getMap()[best];
                 Log.e(TAG, "Plate number:" + recognizedText);
@@ -287,10 +374,14 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
     @Override
     protected void onPostExecute(String aResult) {
         isRunningTask = false;
-        if (!TextUtils.isEmpty(aResult))
+        if (!TextUtils.isEmpty(aResult)) {
+            Log.e(TAG, "onPostExecute: isFail=" + isFail);
             isFail = false;
-        else
+        }else {
             isFail = true;
+            Log.e(TAG, "onPostExecute: isFail=" + isFail);
+
+        }
         listener.updateResult(aResult);
     }
 
@@ -346,7 +437,7 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
         for (int yy = startY; yy <= endY; yy++) {
             for (int xx = startX; xx <= endX; xx++) {
                 final int loc = xx + (yy * w);
-
+//tutaj -  Caused by: java.lang.ArrayIndexOutOfBoundsException: length=5760; index=5779
                 if (this.pixelMap[loc] != -1) {
                     return true;
                 }
@@ -367,7 +458,7 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
     protected boolean hLineClear(final int y) {
         final int w = this.newBitmap.getWidth();
         for (int i = 0; i < w; i++) {
-            if (this.pixelMap[(y * w) + i] != -1) {
+            if (this.pixelMap[(y * w) + i] != -1) { //isBlackpixel
                 return false;
             }
         }

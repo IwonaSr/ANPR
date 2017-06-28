@@ -80,7 +80,7 @@ public class SampleData implements Comparable,Cloneable {
    }
 
 /**
-  * Get the width of the downsampled image.
+  * Get the width of the downsa mpled image.
   *
   * @return The width of the downsampled image
   */

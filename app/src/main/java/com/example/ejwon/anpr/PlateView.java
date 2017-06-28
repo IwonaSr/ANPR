@@ -7,6 +7,7 @@ import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
+import android.widget.TextView;
 
 import com.example.ejwon.anpr.OCRRecognition.OCRRecognition;
 import com.example.ejwon.anpr.common.Utils;
@@ -37,8 +38,8 @@ public class PlateView extends View implements OnTaskCompleted {
     List<Point> platePointList;
     public boolean isFail = false;
     KohonenNetwork net;
-
     public boolean isRunningTask = false;
+    TextView resultOCR;
 
     // Preparing for storing plate region
 
@@ -64,6 +65,18 @@ public class PlateView extends View implements OnTaskCompleted {
     public void setGrayMat (Mat mGray) {
         this.mGray = mGray;
     }
+
+    public void setResultOCR (TextView result) {
+        this.resultOCR = result;
+    }
+
+    public TextView getResultOCR() {
+        return resultOCR;
+    }
+//    public TextView getResultOCR () {
+//        return this.resultOCR;
+//    }
+
 
     public PlateView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -166,6 +179,7 @@ public class PlateView extends View implements OnTaskCompleted {
 
     @Override
     public void updateResult(String result) {
-
+        resultOCR.setText(result);
     }
+
 }

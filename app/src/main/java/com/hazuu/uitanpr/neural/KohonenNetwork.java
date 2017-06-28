@@ -147,8 +147,8 @@ public class KohonenNetwork extends Network implements Serializable{
        length = 1.E-30 ;
 
 
-     normfac[0] = 1.0 / Math.sqrt ( length ) ;
-     synth[0] = 0.0 ;
+     normfac[0] = 1.0 / Math.sqrt ( length ) ; //normalization factor - z-axis normalization,
+     synth[0] = 0.0 ;//synthetic
 
 
    }
@@ -196,7 +196,7 @@ public class KohonenNetwork extends Network implements Serializable{
        optr = outputWeights[i];
        output[i] = dotProduct( input , optr ) * normfac[0]
                    + synth[0] * optr[inputNeuronCount] ;
-       // Remap to bipolar (-1,1 to 0,1)
+       // Remap to bipolar (-1,1 to 0,1) // neuron is mapped to a number between -1 and 1
        output[i] = 0.5 * (output[i] + 1.0) ;
        // account for rounding
        if ( output[i] > 1.0 )
@@ -508,9 +508,9 @@ public class KohonenNetwork extends Network implements Serializable{
 
        adjustWeights ( rate , learnMethod , won , bigcorr, correc ) ;
 
-       //owner.updateStats(n_retry,totalError,best_err);
+//       owner.updateStats(n_retry,totalError,best_err);
        if ( halt ) {
-         //owner.updateStats(n_retry,totalError,best_err);
+//         owner.updateStats(n_retry,totalError,best_err);
          break;
        }
        Thread.yield();
