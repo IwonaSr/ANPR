@@ -111,6 +111,7 @@ public class MainActivity extends Activity {
 
             File cascadeDir = getDir("cascade", Context.MODE_PRIVATE);
             mCascadeFile = new File(cascadeDir, "europe.xml"); // Load XML file according to R.raw.cascade
+//            mCascadeFile = new File(cascadeDir, "cascade.xml"); // Load XML file according to R.raw.cascade
             FileOutputStream os = new FileOutputStream(mCascadeFile);
 
             byte[] buffer = new byte[4096];

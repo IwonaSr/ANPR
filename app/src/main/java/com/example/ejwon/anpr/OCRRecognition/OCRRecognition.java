@@ -99,6 +99,9 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
 
 //            Imgproc.cvtColor(plateImageResized, plateImageGrey,
 //                    Imgproc.COLOR_BGR2GRAY, 1);
+
+//            Imgproc.equalizeHist(plateImageResized, plateImageResized); // wtym miejscu powoduje zanieczyczenia, wykrywa zmięte krawędzie kartki, odpada
+//            Utils.saveImageToFile(plateImageResized, "HistogramEqual/");
             Imgproc.medianBlur(plateImageResized, plateImageResized, 1); //wygładzenie obrazu, "wyczyszczenie" w
             // celu wyodrebnienia głownych kolorów
             Imgproc.adaptiveThreshold(plateImageResized, plateImageResized,
@@ -141,6 +144,9 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                         File folder2 = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_contours2"); //sprawdzenie wyciętych liter
                         folder2.mkdir();
                         ImageFormatConversion.saveBitmapAsJpegFile(imageBitmap2, folder2);
+
+            Imgproc.equalizeHist(plateImageResized, plateImageResized); // wtym miejscu powoduje zanieczyczenia, wykrywa zmięte krawędzie kartki, odpada
+            Utils.saveImageToFile(plateImageResized, "HistogramEqual/");
 
             String recognizedText = "";
             timeRequired = System.currentTimeMillis() - start;
@@ -208,62 +214,10 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                         //odkomentowanie spowoduje blad liczby kanałow (channels), mamy 1 kanałowy
 //                        Imgproc.cvtColor(charImage, charImageGrey,
 //                                Imgproc.COLOR_BGR2GRAY, 1);
-//                        Imgproc.adaptiveThreshold(charImage,
-//                                charImage, 255,
-//                                Imgproc.ADAPTIVE_THRESH_MEAN_C,
-//                                Imgproc.THRESH_BINARY, 203, 5);
-
-  /*                     2 wersja
-                        //45
-                        Imgproc.threshold(charImage, charImage, 15, 255, Imgproc.THRESH_BINARY);
-
-                        //print threshold binary images
-                        Bitmap charImageBitmap3 = Bitmap.createBitmap(
-                                charImage.width(),
-                                charImage.height(),
-                                Bitmap.Config.ARGB_8888);
-                        org.opencv.android.Utils.matToBitmap(
-                                charImage, charImageBitmap3);
-                        File folder3 = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_thresholdCharacter3/"); //sprawdzenie wyciętych liter
-                        folder3.mkdirs();
-                        ImageFormatConversion.saveBitmapAsJpegFile(charImageBitmap3, folder3);
-
-                        //oryginalnie bylo 85, 5
                         Imgproc.adaptiveThreshold(charImage,
                                 charImage, 255,
                                 Imgproc.ADAPTIVE_THRESH_MEAN_C,
-                                Imgproc.THRESH_BINARY, 203, 5);
-                        //dla 215 rozpoznalo T
-                        // dla 201, 5 najbardziej rozpoznaje literkę A, dodatkowo zamiastt O, U tez rozpoznało, D zamias
-                        //Gaussian na pewno nie jest dobry!
-
-                        //print threshold binary images
-                        Bitmap charImageBitmap4 = Bitmap.createBitmap(
-                                charImage.width(),
-                                charImage.height(),
-                                Bitmap.Config.ARGB_8888);
-                        org.opencv.android.Utils.matToBitmap(
-                                charImage, charImageBitmap4);
-                        File folder4 = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_thresholdCharacter4/"); //sprawdzenie wyciętych liter
-                        folder4.mkdirs();
-                        ImageFormatConversion.saveBitmapAsJpegFile(charImageBitmap4, folder4);
-
-                        Imgproc.adaptiveThreshold(charImage,
-                                charImage, 255,
-                                Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                Imgproc.THRESH_BINARY, 203, 5);
-                                */
-
-                        //3 wersja - pogrubione krawędzie, nie rozpoznaje liter
-                        //global -73 - prawie OK, 45 spoko ale nic nie rozpoznaje
-                        //litery są wyodrebnione, pogrubione, niestety nie wykrywa
-                        Imgproc.threshold(charImage, charImage, 45, 255, Imgproc.THRESH_BINARY);
-                        Imgproc.threshold(charImage, charImage, 0, 255, Imgproc.THRESH_OTSU);
-                        org.opencv.core.Size s = new Size(5,5);
-                        Imgproc.GaussianBlur(charImage,charImage,s,0);
-                        Imgproc.threshold(charImage, charImage, 0, 255, Imgproc.THRESH_OTSU);
-                        // 3 wersja
-
+                                Imgproc.THRESH_BINARY, 85, 5);
 
                         Bitmap charImageBitmap = Bitmap.createBitmap(
                                 charImage.width(),
@@ -282,6 +236,7 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                         tempBitmap = new BitmapWithCentroid(
                                 charImageBitmap, centroid);
                         charList.add(tempBitmap);
+
                     }
                 }
                 // }
@@ -351,6 +306,8 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
 
                 recognizedText += net.getMap()[best];
                 Log.e(TAG, "Plate number:" + recognizedText);
+                Utils.saveRecognizedTextToFile(recognizedText);
+
             }
 
             recognizedText = utils.formatPlateNumber(recognizedText);

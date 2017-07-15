@@ -3,15 +3,20 @@ package com.example.ejwon.anpr.common;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Environment;
+import android.util.Log;
 
+import com.example.ejwon.anpr.ImageFormatConversion;
 import com.example.ejwon.anpr.interfaces.Constants;
 
+import org.opencv.core.Mat;
 import org.opencv.core.Point;
 
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -21,6 +26,7 @@ import java.util.List;
 public class Utils {
 
     Context mContext;
+    private static final String TAG = "Utils.java";
 
     public Utils(Context context) {
         this.mContext = context;
@@ -115,5 +121,47 @@ public class Utils {
             e.printStackTrace();
         }
     }
+
+    public static void saveImageToFile(Mat plateImageResized, String locationFolder){
+
+        Bitmap imageBitmap = Bitmap.createBitmap(
+                plateImageResized.width(),
+                plateImageResized.height(),
+                Bitmap.Config.ARGB_8888);
+
+        org.opencv.android.Utils.matToBitmap(
+                plateImageResized, imageBitmap);
+
+//        File folder = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_plate2/"); //tablica
+        File folder = new File(Environment.getExternalStorageDirectory() + File.separator + locationFolder); //tablica
+        folder.mkdir();
+        ImageFormatConversion.saveBitmapAsJpegFile(imageBitmap, folder);
+    }
+
+    public static void saveRecognizedTextToFile(String text){
+        File file = null;
+        Boolean write_successful = false;
+        try {
+        File folder = new File(Environment.getExternalStorageDirectory() + File.separator + "RecognizedPlate"); //tablica
+        if(!folder.exists()){
+            folder.mkdir();
+        }
+        file = new File(folder, "rexognizedPlate.txt");
+        FileWriter filewriter = new FileWriter(file, true);
+        BufferedWriter out = new BufferedWriter(filewriter);
+            text = text + ", ";
+        out.write(text);
+        out.close();
+        write_successful = true;
+
+        } catch (IOException e) {
+            Log.e("ERROR:---", "Could not write file to SDCard" + e.getMessage());
+            write_successful = false;
+            e.printStackTrace();
+        }
+
+        Log.e(TAG, "Status of txt: " + write_successful);
+    }
+
 
 }
