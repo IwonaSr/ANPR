@@ -42,6 +42,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.ejwon.anpr.common.ReadWriteImageFile;
 import com.example.ejwon.anpr.common.Utils;
 import com.example.ejwon.anpr.imageConversion.MatImage;
 import com.example.ejwon.anpr.imageLoader.ImageLoader;
@@ -244,7 +245,7 @@ public class AndroidCameraApi extends Activity implements OnTaskCompleted{
         Bitmap bmp = null;
 //        ImageProcessing.detectNumberPlate(grayMat,mJavaDetector, plateView, imageView); //jesli zdjecie
         bmp = ImageFormatConversion.getBitmapFromMat(grayMat);
-        ImageFormatConversion.saveBitmapAsJpegFile(bmp, folder);
+        ReadWriteImageFile.saveBitmapAsJpegFile(bmp, folder);
 
     }
 
@@ -591,6 +592,20 @@ public class AndroidCameraApi extends Activity implements OnTaskCompleted{
 //                            Mat mRgb = ImageFormatConversion.convertYuv420888ToRgbMat(image);
 //                            Mat mRgb = ImageFormatConversion.greenRGb(image);
 //                            Mat mRgb = ImageFormatConversion.convertYuv420888TorgbMat(image);
+
+                            //dodane
+//                            Bitmap imageBitmap13 = Bitmap.createBitmap(
+//                                    mGray.width(),
+//                                    mGray.height(),
+//                                    Bitmap.Config.ARGB_8888);
+//
+//                            org.opencv.android.Utils.matToBitmap(
+//                                    mGray, imageBitmap13);
+
+//                            File folder13 = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_gray/");
+//                            folder13.mkdir();
+//                            ImageFormatConversion.saveBitmapAsJpegFile(imageBitmap13, folder13);
+
                             ImageProcessing.detectNumberPlate(mGray, mJavaDetector, plateView, net);
 //                            bmp = ImageFormatConversion.getBitmapFromMat(mGray);
 //                            bmp = ImageFormatConversion.getBitmapFromMat(mRgb);

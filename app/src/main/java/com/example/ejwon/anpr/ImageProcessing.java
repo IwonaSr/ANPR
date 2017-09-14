@@ -14,7 +14,7 @@ import org.opencv.objdetect.CascadeClassifier;
  */
 public final class ImageProcessing {
 
-    private static float mRelativePlateSize = 0.2f;
+    private static float mRelativePlateSize = 0.2f; // 20%
     private static int mAbsolutePlateSize = 0;
     // This variable is used to to store the d;etected plates in the result
     private static MatOfRect plates;
@@ -25,26 +25,28 @@ public final class ImageProcessing {
 //    public static void detectNumberPlate(Mat mGray, CascadeClassifier mJavaDetector, PlateView plateView, ImageView imageView) { //jesli zdjecie
     public static void detectNumberPlate(Mat mGray, CascadeClassifier mJavaDetector, PlateView plateView, KohonenNetwork net) {
 
+//        //http://opencv-java-tutorials.readthedocs.io/en/latest/06-face-detection-and-tracking.html - podobny przyklad parametrów detectmultiscale
         if (mAbsolutePlateSize == 0) {
-            int heightGray = mGray.rows();
+            int heightGray = mGray.rows(); //stala wartosc kadru
             if (Math.round(heightGray * mRelativePlateSize) > 0) {
                 mAbsolutePlateSize = Math.round(heightGray
-                        * mRelativePlateSize);
+                        * mRelativePlateSize); // minimalny rozmiar tablicy musi wynosić coajmniej 20% wysokosci zdjęcia czyli musimy przyblizyć kadr do takiej odleglosci aby
+                //tablica stanwoila minimalny rozmiar 20% wyokosci zdjecia/kadru czyl mniej więcej 216
                 Log.d(TAG, "mAbsolutePlateSize: " + mAbsolutePlateSize);
 
             }
         }
-
+    //http://docs.opencv.org/2.4/modules/objdetect/doc/cascade_classification.html
         plates = new MatOfRect();
             if (mJavaDetector != null) {
                 mJavaDetector.detectMultiScale(
-                        mGray,
-                        plates,
-                        1.1,
-                        2,
-                        2,
-                        new Size(mAbsolutePlateSize, mAbsolutePlateSize),
-                        new Size()
+                        mGray, //macierz obrazu w ktory zawiera rozpoznane obiekty (przypuszczalne tablice)
+                        plates, // wektor prostokątów zawierających rozpoznany obiekt
+                        1.1, //scaleFactor - parameter informujacy jak bardzo rozmiar obrazu powinien byc zredykowany do skali obrazu
+                        2, //parametr ktory oznacz ile sasiednich prostokątow jest kandydatami (brane pod uwage)
+                        2, //
+                        new Size(mAbsolutePlateSize, mAbsolutePlateSize), //mininalny rozmiar obiektu, mniejsze obiekty są ingorowane, ustawilismy minimum 20% rozmiaru wysokosci ramki
+                        new Size() //maksmalny rozmiar tablicy, wieksze sa ignorowane, niezdefiniowany
                 );
                 Log.d(TAG, "mJavaDetector: " + mJavaDetector);
             }

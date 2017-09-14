@@ -2,11 +2,12 @@ package com.example.ejwon.anpr.OCRRecognition;
 
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
-import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Log;
 
-import com.example.ejwon.anpr.ImageFormatConversion;
+import com.example.ejwon.anpr.common.ReadWriteImageFile;
+import com.example.ejwon.anpr.common.Result;
+import com.example.ejwon.anpr.common.Time;
 import com.example.ejwon.anpr.common.Utils;
 import com.example.ejwon.anpr.interfaces.OnTaskCompleted;
 import com.example.ejwon.anpr.models.BitmapWithCentroid;
@@ -24,7 +25,6 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -52,9 +52,12 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
     Utils utils;
     public boolean isFail = false;
     public boolean isRunningTask = false;
+    public static int i = 0;
+    public static int ct = 0;
+//    public static Result resultRec = new Result();
 
     public OCRRecognition(List<Rect> currentPlates, Mat originImage, boolean isRunningTask,
-                 OnTaskCompleted listener, KohonenNetwork net, Utils utils) {
+                          OnTaskCompleted listener, KohonenNetwork net, Utils utils) {
         this.currentPlatesOnAsy = new ArrayList<Rect>(currentPlates);
         this.originImageOnAsy = originImage;
         this.listener = listener;
@@ -72,8 +75,11 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
     protected String doInBackground(Void... params) {
         Iterator<Rect> iterator = currentPlatesOnAsy.iterator();
         BitmapWithCentroid tempBitmap;
-        long start, timeRequired;
+        long start, start2, start3;
+        long timeRequired = 0, timeRequired2 = 0, timeRequired3 = 0, timeAllRequired = 0;
         String result = "";
+        String resultTown = "";
+        Result recognitionResult = new Result();
 
         while (iterator.hasNext()) {
             start = System.currentTimeMillis();
@@ -81,7 +87,17 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
             Mat plateImage;
             List<BitmapWithCentroid> charList = new ArrayList<BitmapWithCentroid>();
 
-            int x = plateRect.x, y = plateRect.y, w = plateRect.width, h = plateRect.height;
+            int x = plateRect.x - 500, y = plateRect.y, w = plateRect.width + 500, h = plateRect.height;
+
+            if (x - 500 < 0)
+                x = 0;
+            if (w > 1280)
+                w = 1280;
+
+            Log.e(TAG, "Coordinate x,y of numberPlate: " + x + ", " + y);
+            Log.e(TAG, "Width: " + w);
+            Log.e(TAG, "Height: " + h);
+
 
             Rect roi = new Rect((int) (x), (int) (y), (int) (w),
                     (int) (h));
@@ -90,8 +106,21 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
 
             plateImage = originImageOnAsy.submat(roi); //docinanie tablic z całego obrazu
 
+            Bitmap imageBitmap13 = Bitmap.createBitmap(
+                    plateImage.width(),
+                    plateImage.height(),
+                    Bitmap.Config.ARGB_8888);
+
+            org.opencv.android.Utils.matToBitmap(
+                    plateImage, imageBitmap13);
+
+//            File folder13 = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_doc/");
+//            folder13.mkdir();
+//            ReadWriteImageFile.saveBitmapAsJpegFile(imageBitmap13, folder13);
+
             Mat plateImageResized = new Mat();
 
+            //jednostkowy wymiar
             Imgproc.resize(plateImage, plateImageResized, new Size(680,
                     492)); //dlaczego do rozmiaru 680, 492? - zwiekszone zdjecie i zwężone
 
@@ -102,24 +131,18 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
 
 //            Imgproc.equalizeHist(plateImageResized, plateImageResized); // wtym miejscu powoduje zanieczyczenia, wykrywa zmięte krawędzie kartki, odpada
 //            Utils.saveImageToFile(plateImageResized, "HistogramEqual/");
-            Imgproc.medianBlur(plateImageResized, plateImageResized, 1); //wygładzenie obrazu, "wyczyszczenie" w
+            Imgproc.medianBlur(plateImageResized, plateImageResized, 1); //wygładzenie obrazu, "wyczyszczenie" z zanieczyszczen obrazu
+            //zalecane przed metoda wykrywania krawedzi find contours ponieważ metoda findcontoure jest podatna na szumy
             // celu wyodrebnienia głownych kolorów
+
+//            ReadWriteImageFile.saveImageToFile(plateImageResized, "MedianFilter/");
+
             Imgproc.adaptiveThreshold(plateImageResized, plateImageResized,
                     255, Imgproc.ADAPTIVE_THRESH_MEAN_C,
                     Imgproc.THRESH_BINARY, 85, 5); //binaryzacja obrazu w skali szarości - pięknie zbinaryzowane - OK
+            //dopisane -- zbinaryzowana tablica na 0 i 1
+//            ReadWriteImageFile.saveImageToFile(plateImageResized, "ANPR_plate2/");
 
-                        //dopisane -- zbinaryzowana tablica na 0 i 1
-                        Bitmap imageBitmap = Bitmap.createBitmap(
-                                plateImageResized.width(),
-                                plateImageResized.height(),
-                                Bitmap.Config.ARGB_8888);
-
-                        org.opencv.android.Utils.matToBitmap(
-                                plateImageResized, imageBitmap);
-
-                        File folder = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_plate2/"); //tablica
-                     folder.mkdir();
-            ImageFormatConversion.saveBitmapAsJpegFile(imageBitmap, folder);
 
             List<MatOfPoint> contours = new ArrayList<MatOfPoint>(); //rozpoznane kontury, vector of points
 
@@ -127,33 +150,25 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                     plateImageResized.cols(), CvType.CV_8UC1,
                     new Scalar(0));
 
+            //Wydzielanei znaków tablivy metoda konturową
+            //Algorytm wykrywania kontur uzyty jako segmentacja liter na podstawie wykrytych kontur
+            // zwracana jest lista znalezionych konturów ( jeden obraz z wykrytymi konturami)
             Imgproc.findContours(plateImageResized, contours, hierarchy,
                     Imgproc.CHAIN_APPROX_SIMPLE, Imgproc.RETR_LIST); //kolejnosc zamieniona? Aprox i retr list?
+//            ReadWriteImageFile.saveImageToFile(plateImageResized, "ANPR_contours2");
 
 
+            Imgproc.equalizeHist(plateImageResized, plateImageResized);
+//            ReadWriteImageFile.saveImageToFile(plateImageResized, "HistogramEqual/");
 
-            //dopisane - lekko zbinaryzowane, wiecej niz 2 kolory
-                        Bitmap imageBitmap2 = Bitmap.createBitmap(
-                                plateImageResized.width(),
-                                plateImageResized.height(),
-                                Bitmap.Config.ARGB_8888);
-
-                        org.opencv.android.Utils.matToBitmap(
-                                plateImageResized, imageBitmap2);
-
-                        File folder2 = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_contours2"); //sprawdzenie wyciętych liter
-                        folder2.mkdir();
-                        ImageFormatConversion.saveBitmapAsJpegFile(imageBitmap2, folder2);
-
-            Imgproc.equalizeHist(plateImageResized, plateImageResized); // wtym miejscu powoduje zanieczyczenia, wykrywa zmięte krawędzie kartki, odpada
-            Utils.saveImageToFile(plateImageResized, "HistogramEqual/");
-
+            // segmentacja
             String recognizedText = "";
             timeRequired = System.currentTimeMillis() - start;
             Log.e(TAG, "Time for find countour: " + timeRequired);
             Log.e(TAG, "Start loop!!!" + contours.size());
-            start = System.currentTimeMillis();
+            start2 = System.currentTimeMillis();
 
+            //http://grokbase.com/t/gg/android-opencv/123tqz6494/regarding-largest-contour-centroid-of-contour
             for (int i = 0; i < contours.size(); i++) {
                 List<Point> goodpoints = new ArrayList<Point>();
                 Mat contour = contours.get(i);
@@ -161,55 +176,56 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                 int buff[] = new int[num * 2]; // [x1, y1, x2, y2, ...]
                 contour.get(0, 0, buff);
                 for (int q = 0; q < num * 2; q = q + 2) {
-                    goodpoints.add(new Point(buff[q], buff[q + 1]));
+                    goodpoints.add(new Point(buff[q], buff[q + 1])); //P(buff[0], buff[1], P(buff[2], buff[3]),  P(buff[4], buff[5])- ArrayLista punktów
                 }
 
+                //nastepnie aby ulatwic analize konturu wyznacza się jego prostokąt otaczający
                 MatOfPoint points = new MatOfPoint();
                 points.fromList(goodpoints);
-                Rect boundingRect = Imgproc.boundingRect(points);
+                Rect boundingRect = Imgproc.boundingRect(points); // wylicza i zwraca najmniejszy prostokąt dla zbioru punktów
 
-                if (((boundingRect.height / boundingRect.width) >= 1.5)
-                        && ((boundingRect.height / boundingRect.width) <= 3.0)
-                        && ((boundingRect.height * boundingRect.width) >= 5000)) {
 
-                    int cx = boundingRect.x + (boundingRect.width / 2);
+//                if(((boundingRect.height/boundingRect.width) >= 0.45) && ((boundingRect.height / boundingRect.width) <= 0.62) && ((boundingRect.height * boundingRect.width) >= 5000)){
+//                }
+
+                //wyznaczenie progów W/H W*H czyli maksymalnych wartosci konturu otaczajacego potencjalna litere
+                if (((boundingRect.height / boundingRect.width) >= 1.5) //stosunek dlugosci boków prosotkąta W/H nie moze byc mniejsza niz 1,5
+                        && ((boundingRect.height / boundingRect.width) <= 3.0)    //stosunek dlugosci boków W/H nie moze byc większa niz 3
+                        && ((boundingRect.height * boundingRect.width) >= 5000)) { //iloczyn dlugosci boków nie moze byc większy niz 5000, średnio wysokośc litery wynosi
+                    //Hobrazu/3 czyli 492/3 = 164, oraz Wobrazu/15 = 45,3 (lub 55) czyli iloczyn h i w wynosi srednio 7380
+
+                    int cx = boundingRect.x + (boundingRect.width / 2); // x i y to współrzedne górnegolewego boku protsotkąta
                     int cy = boundingRect.y + (boundingRect.height / 2);
 
-                    Point centroid = new Point(cx, cy);
+                    Point centroid = new Point(cx, cy); // to jest środek (wspolrzedne x i y) prostokąta - centroid
 
-                    if (centroid.y >= 120 && centroid.y <= 400
-                            && centroid.x >= 100 && centroid.x <= 590) {
+                    if (centroid.y >= 120 && centroid.y <= 400          // tablica znajduje sie mniej wiecej na srodku, wartosc wspolrzednych centroidu nei oze byc mniejsza niz te
+                            && centroid.x >= 100 && centroid.x <= 590) { // wartości ktore liczone sa od poczatkow krawedzi h i w (mniej wiecej na oko liczone)
 
-                        int calWidth = (boundingRect.width + 5)
+                        int calWidth = (boundingRect.width + 5)  // b.width w przyblizeniu 45 + 5 - (45 + 5) mod 4 = 50 - 2 = 48
                                 - (boundingRect.width + 5) % 4;
 
                         Rect cr = new Rect(boundingRect.x,
                                 boundingRect.y, calWidth,
-                                boundingRect.height);
+                                boundingRect.height); // nowy obwód (prostokąt)dla litery
 
                         Mat charImage = new Mat(
                                 cr.size(),
                                 plateImageResized.type());
 
-                        charImage = plateImageResized.submat(cr);
+                        charImage = plateImageResized.submat(cr); // "wycina" macierz o danym wymiarze prostokątam w której znajduje się litera
                         Log.e(TAG, "Channels of CharImage: " + charImage.channels());
 
                         //dopisane -- Litery wyciete, więcej niz 2 kolory ale blizej binaryzacji -- Prawie OK
-                        Bitmap imageBitmap3 = Bitmap.createBitmap(
-                                charImage.width(),
-                                charImage.height(),
-                                Bitmap.Config.ARGB_8888);
+//                        ReadWriteImageFile.saveImageToFile(charImage, "ANPR_znaki2/");
 
-                        org.opencv.android.Utils.matToBitmap(
-                                charImage, imageBitmap3);
-
-                        File folder3 = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_znaki2/");
-                        folder3.mkdir();
-                        ImageFormatConversion.saveBitmapAsJpegFile(imageBitmap3, folder3);
-
-                            //potrzebne jeśli konwertujemy z BGR to GRAY
-//                        Mat charImageGrey = new Mat(charImage.size(),
-//                                charImage.type());
+//                        MatOfPoint cnt =  contours.get(i);
+//                        MatOfPoint2f mat2f = new MatOfPoint2f(points.toArray());
+//                        Mat rotatedChar = AspectOfPlate.computeSkew(mat2f ,charImage);
+//                        Mat rotatedChar = AspectOfPlate.computeSkew(charImage);
+//
+//                        Imgproc.equalizeHist(rotatedChar, rotatedChar);
+//                        ReadWriteImageFile.saveImageToFile(rotatedChar, "HistogramEqual/");
 
                         //odkomentowanie spowoduje blad liczby kanałow (channels), mamy 1 kanałowy
 //                        Imgproc.cvtColor(charImage, charImageGrey,
@@ -229,9 +245,10 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                                 charImage, charImageBitmap);
                         Log.e(TAG, "Before save");
 
-                        File folder5 = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_threshold_second2/"); //sprawdzenie wyciętych liter
-                        folder5.mkdirs();
-                        ImageFormatConversion.saveBitmapAsJpegFile(charImageBitmap, folder5);
+//                        File folder5 = new File(Environment.getExternalStorageDirectory() + File.separator + "ANPR_threshold_second2/"); //sprawdzenie wyciętych liter
+//                        folder5.mkdirs();
+//                        ReadWriteImageFile.saveBitmapAsJpegFile(charImageBitmap, folder5);
+
 
                         tempBitmap = new BitmapWithCentroid(
                                 charImageBitmap, centroid);
@@ -242,11 +259,11 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                 // }
             }
 
-            timeRequired = System.currentTimeMillis() - start;
+            timeRequired2 = System.currentTimeMillis() - start2;
             Log.e(TAG, "Passed the loop");
-            Log.e(TAG, "Time for OCR: " + timeRequired);
+            Log.e(TAG, "Time for OCR: " + timeRequired2);
 
-            start = System.currentTimeMillis();
+            start3 = System.currentTimeMillis();
             Collections.sort(charList);
 
             //DOWNSAMPLE_WIDTH oraz DOWNSAMPLE_HEIGHT wymiar gridu w do którego zmniejszamy znak - downsampling image
@@ -281,7 +298,7 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                         }
                     }
                 }
-            //downsampling //https://www.youtube.com/watch?v=Sq_PrLNLLMU
+                //downsampling //https://www.youtube.com/watch?v=Sq_PrLNLLMU
                 // if pixel is solid 0.5 if not -0.5 (0.5 black pixel, -0.5 white pixel)
                 final double input[] = new double[20 * 50];
                 int idx = 0;
@@ -296,17 +313,17 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                 double synth[] = new double[1];
 
                 Assert.assertNotNull(input);
-                if(input == null){
+                if (input == null) {
                     Log.e(TAG, "Input array is Null");
 
                 }
 
                 int best = net.winner(input, normfac, synth); //rozpoznawanie litery z jakis danych
-                //input neuron,method indentify which of the 35 neurons won, store this information in the best integer
+                //input neuron,method indentify which of the 1000 neurons won, store this information in the best integer
 
                 recognizedText += net.getMap()[best];
                 Log.e(TAG, "Plate number:" + recognizedText);
-                Utils.saveRecognizedTextToFile(recognizedText);
+
 
             }
 
@@ -317,10 +334,38 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
             else
                 result += "\n" + recognizedText;
 
-            timeRequired = System.currentTimeMillis() - start;
-            Log.e(TAG, "Time: " + timeRequired);
+            timeRequired3 = System.currentTimeMillis() - start3;
+            Log.e(TAG, "Time: " + timeRequired3);
+            timeAllRequired = System.currentTimeMillis() - start;
+            Log.d("Summary time: ", "Time: " + timeAllRequired);
+
         }
-        return result;
+
+        if( !result.isEmpty()) {
+            recognitionResult.setRecognizedNumber(result);
+//            recognitionResult.setRecognizedTown(utils.lookingForPlate(recognitionResult));
+            recognitionResult = utils.lookingForPlate(recognitionResult);
+            resultTown = recognitionResult.getRecognizedTown();
+            recognitionResult.setAllTimes(new Time(timeRequired, timeRequired2, timeRequired3, timeAllRequired));
+            ReadWriteImageFile.saveResultToFile(recognitionResult);
+        }
+
+
+//        recognitionResult = ReadWriteImageFile.saveRecognizedTownToFile(resultRec, result, i, ct);
+//        i = recognitionResult.getNumberIteration();
+//        ct = recognitionResult.getNumberTown();
+
+
+//        if( !result.isEmpty()) {
+//            String districtNumber = result.substring(0, 2);
+//            Log.e(TAG, "Plate: " + districtNumber);
+//            String recognizedTown = ReadJsonFile.ReadFile(districtNumber);
+//            Log.e(TAG, "Town: " + recognizedTown);
+//            ReadWriteImageFile.saveRecognizedTextToFile(recognizedTown, i, ct);
+//        }
+
+
+        return resultTown;
     }
 
     @Override
@@ -334,7 +379,7 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
         if (!TextUtils.isEmpty(aResult)) {
             Log.e(TAG, "onPostExecute: isFail=" + isFail);
             isFail = false;
-        }else {
+        } else {
             isFail = true;
             Log.e(TAG, "onPostExecute: isFail=" + isFail);
 
@@ -346,10 +391,8 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
      * This method is called to automatically crop the image so that whitespace
      * is removed.
      *
-     * @param w
-     *            The width of the image.
-     * @param h
-     *            The height of the image
+     * @param w The width of the image.
+     * @param h The height of the image
      */
     protected void findBounds(final int w, final int h) {
         // top line
@@ -394,7 +437,6 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
         for (int yy = startY; yy <= endY; yy++) {
             for (int xx = startX; xx <= endX; xx++) {
                 final int loc = xx + (yy * w);
-//tutaj -  Caused by: java.lang.ArrayIndexOutOfBoundsException: length=5760; index=5779
                 if (this.pixelMap[loc] != -1) {
                     return true;
                 }
@@ -408,8 +450,7 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
      * This method is called internally to see if there are any pixels in the
      * given scan line. This method is used to perform autocropping.
      *
-     * @param y
-     *            The horizontal line to scan.
+     * @param y The horizontal line to scan.
      * @return True if there were any pixels in this horizontal line.
      */
     protected boolean hLineClear(final int y) {
@@ -425,8 +466,7 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
     /**
      * This method is called to determine ....
      *
-     * @param x
-     *            The vertical line to scan.
+     * @param x The vertical line to scan.
      * @return True if there are any pixels in the specified vertical line.
      */
     protected boolean vLineClear(final int x) {
