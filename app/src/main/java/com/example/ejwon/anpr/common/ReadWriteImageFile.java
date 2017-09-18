@@ -64,7 +64,7 @@ public class ReadWriteImageFile {
         Boolean write_successful = false;
         String savedResult = "";
         savedResult = result.displayResult();
-        Log.d("SavedResult: ", savedResult);
+//        Log.d("SavedResult: ", savedResult);
         if(!savedResult.isEmpty()) {
 
             try {
@@ -136,7 +136,7 @@ public class ReadWriteImageFile {
                 write_successful = false;
                 e.printStackTrace();
             }
-            Log.e(TAG, "Status of txt: " + write_successful);
+//            Log.e(TAG, "Status of txt: " + write_successful);
         }
 
         return result;

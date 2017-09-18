@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Environment;
 import android.util.Log;
 
+import com.example.ejwon.anpr.fileIO.ReadJsonFile;
 import com.example.ejwon.anpr.interfaces.Constants;
 
 import org.json.JSONException;
@@ -42,7 +43,7 @@ public class Utils {
         return value;
     }
 
-    public Result lookingForPlate(Result result) {
+    public Result searchingForPlate(Result result) throws JSONException {
         String number = "";
         String recognizedTown = "";
         String recInfo= "";
@@ -53,16 +54,17 @@ public class Utils {
         Index index =  new Index();
         if (!recognizedPlate.isEmpty()) {
             i = i + 1;
-            Log.d("Index: ", "" + i);
+//            Log.d("Index: ", "" + i);
 
-            String districtNumber = recognizedPlate.substring(0, 2);
+            String districtNumber = recognizedPlate;
+//            String districtNumber = recognizedPlate.substring(0, 2);
             Log.e(TAG, "Plate: " + districtNumber);
-            recognizedTown = ReadFile(districtNumber);
+            recognizedTown = JsonIterator.iterateJsonData(ReadJsonFile.loadedJsonData, districtNumber);
             Log.e(TAG, "Town: " + recognizedTown);
             result.setRecognizedTown(recognizedTown);
 
             if (!recognizedTown.isEmpty()) {
-                Log.d("Dupa: ", "" + ct);
+//                Log.d("Dupa: ", "" + ct);
                 if (recognizedTown.contains("Mys")) {
                     ct = ct + 1;
                     index.setTown(ct);
@@ -74,6 +76,46 @@ public class Utils {
 //            result.setNumberTown(ct);
             }
 
+            index.setNumber(i);
+            result.setIndex(index);
+        }
+
+        return result;
+    }
+
+
+    public Result lookingForPlate(Result result) {
+        String number = "";
+        String recognizedTown = "";
+        String recInfo= "";
+        String recognizedPlate = result.getRecognizedNumber();
+        Log.d("RecognizedPlate: ", recognizedPlate);
+        int i = 0;
+        int ct = 0;
+        Index index =  new Index();
+        if (!recognizedPlate.isEmpty()) {
+            i = i + 1;
+//            Log.d("Index: ", "" + i);
+
+//            String districtNumber = recognizedPlate.substring(0, 2);
+            String districtNumber = recognizedPlate;
+            Log.e(TAG, "Plate: " + districtNumber);
+            recognizedTown = ReadFile(districtNumber);
+            Log.e(TAG, "Town: " + recognizedTown);
+            result.setRecognizedTown(recognizedTown);
+
+            if (!recognizedTown.isEmpty()) {
+//                Log.d("Dupa: ", "" + ct);
+                if (recognizedTown.contains("Mys")) {
+                    ct = ct + 1;
+                    index.setTown(ct);
+                    Log.d("TownInside: ", "" + ct);
+                }
+//            String time = result.getAllTimes().timeToDisplay();
+//            recInfo = "(" + i + ")" + recognizedPlate + ":" + recognizedTown + ":ct:" + ct + time + ", ";
+//            result.setNumberIteration(i);
+//            result.setNumberTown(ct);
+            }
             index.setNumber(i);
             result.setIndex(index);
         }
@@ -118,6 +160,7 @@ public class Utils {
                     if(key.equals(result)){
                         value = (String) jsonObj.get(key);
                         Log.d(TAG, "Value " + result);
+                        break;
                     }
                     else{
 
@@ -146,14 +189,14 @@ public class Utils {
         String result = source;
 
         if(source.length() == 8) {
-            Log.e(TAG, "osiem: " + 8);
+//            Log.e(TAG, "osiem: " + 8);
             result = correctFirstLetter(source.substring(0,1)) + correctNumberForPoland(source.substring(1, 2)) +  source.substring(2, 4) +  correctNumber(source.substring(4, 8));
         }
         else if (source.length() == 9) {
-            Log.e(TAG, "dziewiec: " + 9);
+//            Log.e(TAG, "dziewiec: " + 9);
             result = correctFirstLetter(source.substring(0,1)) + correctNumberForPoland(source.substring(1, 2))  + source.substring(2, 4) + correctNumber(source.substring(4, 7)) + "." + correctNumber((source.substring(7, 9)));
         }else if (source.length() == 7) {
-            Log.e(TAG, "siedem: " + 7);
+//            Log.e(TAG, "siedem: " + 7);
             result = correctFirstLetter(source.substring(0,1)) + correctNumberForPoland(source.substring(1, 2)) +  source.substring(2, 4) +  correctNumber(source.substring(4, 7));
         }
         else if (source.length() == 6)
@@ -163,11 +206,13 @@ public class Utils {
         else if (source.length() == 4)
             result = correctFirstLetter(source.substring(0,1)) + correctNumberForPoland(source.substring(1, 2)) + source.substring(2, 4);
         else if (source.length() == 3)
-            result = correctFirstLetter(source.substring(0,1)) + correctNumberForPoland(source.substring(1, 2)) + source.substring(3);
+            result = correctFirstLetter(source.substring(0,1)) + correctNumberForPoland(source.substring(1, 2)) + source.substring(2, 3);
         else if (source.length() == 2)
-            result = correctFirstLetter(source.substring(0,1)) + correctNumberForPoland(source.substring(1, 2));
+            result = correctFirstLetter(source.substring(0, 1)) + correctNumberForPoland(source.substring(1, 2));
+        else if(source.length() >= 10)
+            result = correctFirstLetter(source.substring(0,1)) + correctNumberForPoland(source.substring(1, 2))  + source.substring(2, 4) + correctNumber(source.substring(4, 7)) + "." + correctNumber((source.substring(7, 9)));
         else
-            result = "";
+            return "";
 
         return result;
     }
@@ -218,9 +263,10 @@ public class Utils {
     public String correctFirstLetter(String source)
     {
         String firstLetter = correctNumberForPoland(source);
-        if( firstLetter.contains("M")){
+        if(firstLetter.contains("M")){
             firstLetter = "W";
         }
+        Log.d("firstLetter" , firstLetter);
         return firstLetter;
     }
 
@@ -228,19 +274,20 @@ public class Utils {
     {
         char[] sourceArray = source.toCharArray();
         for(int index = 0; index < sourceArray.length; index++)
-        {               Log.e(TAG, "DUPA" + sourceArray[index]);
+        {
+//            Log.e(TAG, "DUPA" + sourceArray[index]);
 
             if(sourceArray[index] == 'Z') {
                 sourceArray[index] = '2';
-                Log.e(TAG, "Z jako 2: " + sourceArray[index]);
+//                Log.e(TAG, "Z jako 2: " + sourceArray[index]);
             }
             else if (sourceArray[index] == 'S') {
                 sourceArray[index] = '5';
-                Log.e(TAG, "S jako 5: " + sourceArray[index]);
+//                Log.e(TAG, "S jako 5: " + sourceArray[index]);
             }
             else if (sourceArray[index] == 'D') {
                 sourceArray[index] = '0';
-                Log.e(TAG, "D jako 0: " + sourceArray[index]);
+//                Log.e(TAG, "D jako 0: " + sourceArray[index]);
             }
 //            else if (sourceArray[index] == '0')
 //                sourceArray[index] = 'D';

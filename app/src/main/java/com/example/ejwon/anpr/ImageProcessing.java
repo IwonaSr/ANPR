@@ -48,7 +48,7 @@ public final class ImageProcessing {
                         new Size(mAbsolutePlateSize, mAbsolutePlateSize), //mininalny rozmiar obiektu, mniejsze obiekty są ingorowane, ustawilismy minimum 20% rozmiaru wysokosci ramki
                         new Size() //maksmalny rozmiar tablicy, wieksze sa ignorowane, niezdefiniowany
                 );
-                Log.d(TAG, "mJavaDetector: " + mJavaDetector);
+//                Log.d(TAG, "mJavaDetector: " + mJavaDetector);
             }
 
 

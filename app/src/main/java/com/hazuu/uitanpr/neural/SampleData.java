@@ -59,6 +59,7 @@ public class SampleData implements Comparable,Cloneable {
      return grid[x][y];
    }
 
+
 /**
   * Clear the downsampled image
   */

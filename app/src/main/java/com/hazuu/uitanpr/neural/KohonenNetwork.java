@@ -134,23 +134,19 @@ public class KohonenNetwork extends Network implements Serializable{
     * @param synth synthetic last input
     */
    void normalizeInput(
-                      final double input[] ,
-                      double normfac[] ,
-                      double synth[]
-                      )
-   {
-     double length, d ;
+           final double input[],
+           double normfac[],
+           double synth[]
+   ) {
+       double length, d;
 
-     length = vectorLength ( input ) ;
+       length = vectorLength(input);
 // just in case it gets too small
-     if ( length < 1.E-30 )
-       length = 1.E-30 ;
+       if (length < 1.E-30)
+           length = 1.E-30;
 
-
-     normfac[0] = 1.0 / Math.sqrt ( length ) ; //normalization factor - z-axis normalization,
-     synth[0] = 0.0 ;//synthetic
-
-
+       normfac[0] = 1.0 / Math.sqrt(length); //normalization factor - z-axis normalization,
+       synth[0] = 0.0;//synthetic
    }
 
    /**
@@ -235,7 +231,7 @@ public class KohonenNetwork extends Network implements Serializable{
          win = i ;
        }
 // account for rounding
-       if ( output[i] > 1.0 )
+       if ( output[i] > 1.0 )// if activate neuron
          output[i] = 1.0 ;
        if ( output[i] < 0.0 )
          output[i] = 0.0 ;
@@ -439,106 +435,98 @@ public class KohonenNetwork extends Network implements Serializable{
     *
     * @exception RuntimeException
     */
-   public void learn ()
-   throws RuntimeException
-   {
-     int i, key, tset,iter,n_retry,nwts;
-     int won[],winners ;
-     double work[],correc[][],rate,best_err,dptr[];
-     double bigerr[] = new double[1] ;
-     double bigcorr[] = new double[1];
-     KohonenNetwork bestnet;  // Preserve best here
+   public void learn()
+           throws RuntimeException {
+       int i, key, tset, iter, n_retry, nwts;
+       int won[], winners;
+       double work[], correc[][], rate, best_err, dptr[];
+       double bigerr[] = new double[1];
+       double bigcorr[] = new double[1];
+       KohonenNetwork bestnet;  // Preserve best here
 
-     totalError = 1.0 ;
+       totalError = 1.0;
 
+       for (tset = 0; tset < train.getTrainingSetCount(); tset++) {
+           dptr = train.getInputSet(tset);
+           if (vectorLength(dptr) < 1.E-30) {
+               throw (new RuntimeException("Multiplicative normalization has null training case"));
+           }
 
-     for ( tset=0 ; tset<train.getTrainingSetCount(); tset++ ) {
-       dptr = train.getInputSet(tset);
-       if ( vectorLength( dptr ) < 1.E-30 ) {
-         throw(new RuntimeException("Multiplicative normalization has null training case")) ;
        }
 
-     }
+       bestnet = new KohonenNetwork(inputNeuronCount, outputNeuronCount);
 
+       won = new int[outputNeuronCount];
+       correc = new double[outputNeuronCount][inputNeuronCount + 1];
+       if (learnMethod == 0)
+           work = new double[inputNeuronCount + 1];
+       else
+           work = null;
 
-     bestnet = new KohonenNetwork(inputNeuronCount,outputNeuronCount) ;
+       rate = learnRate;
 
-     won = new int[outputNeuronCount];
-     correc = new double[outputNeuronCount][inputNeuronCount+1];
-     if ( learnMethod==0 )
-       work = new double[inputNeuronCount+1];
-     else
-       work = null ;
-
-     rate = learnRate;
-
-     initialize () ;
-     best_err = 1.e30 ;
+       initialize();
+       best_err = 1.e30;
 
 // main loop:
+       n_retry = 0;
+       for (iter = 0; ; iter++) {
 
-     n_retry = 0 ;
-     for ( iter=0 ; ; iter++ ) {
+           evaluateErrors(rate, learnMethod, won,
+                   bigerr, correc, work);
 
-       evaluateErrors ( rate , learnMethod , won ,
-                        bigerr , correc , work ) ;
+           totalError = bigerr[0];
 
-       totalError = bigerr[0] ;
+           if (totalError < best_err) {
+               best_err = totalError;
+               copyWeights(bestnet, this);
+           }
 
-       if ( totalError < best_err ) {
-         best_err = totalError ;
-         copyWeights ( bestnet , this ) ;
-       }
+           winners = 0;
+           for (i = 0; i < won.length; i++)
+               if (won[i] != 0)
+                   winners++;
 
-       winners = 0 ;
-       for ( i=0;i<won.length;i++ )
-         if ( won[i]!=0 )
-           winners++;
+           if (bigerr[0] < quitError)
+               break;
 
+           if ((winners < outputNeuronCount) &&
+                   (winners < train.getTrainingSetCount())) {
+               forceWin(won);
+               continue;
+           }
 
-       if ( bigerr[0] < quitError )
-         break ;
-
-
-       if ( (winners < outputNeuronCount)  &&
-            (winners < train.getTrainingSetCount()) ) {
-         forceWin ( won ) ;
-         continue ;
-       }
-
-       adjustWeights ( rate , learnMethod , won , bigcorr, correc ) ;
+           adjustWeights(rate, learnMethod, won, bigcorr, correc);
 
 //       owner.updateStats(n_retry,totalError,best_err);
-       if ( halt ) {
+           if (halt) {
 //         owner.updateStats(n_retry,totalError,best_err);
-         break;
+               break;
+           }
+           Thread.yield();
+
+           if (bigcorr[0] < 1E-5) {
+               if (++n_retry > retries)
+                   break;
+               initialize();
+               iter = -1;
+               rate = learnRate;
+               continue;
+           }
+
+           if (rate > 0.01)
+               rate *= reduction;
        }
-       Thread.yield();
-
-       if ( bigcorr[0] < 1E-5 ) {
-         if ( ++n_retry > retries )
-           break ;
-         initialize () ;
-         iter = -1 ;
-         rate = learnRate ;
-         continue ;
-       }
-
-       if ( rate > 0.01 )
-         rate *= reduction ;
-
-     }
-
 // done
 
-     copyWeights( this , bestnet ) ;
+       copyWeights(this, bestnet);
 
-     for ( i=0 ; i<outputNeuronCount ; i++ )
-       normalizeWeight ( outputWeights[i] ) ;
+       for (i = 0; i < outputNeuronCount; i++)
+           normalizeWeight(outputWeights[i]);
 
-     halt = true;
-     n_retry++;
-     //owner.updateStats(n_retry,totalError,best_err);
+       halt = true;
+       n_retry++;
+       //owner.updateStats(n_retry,totalError,best_err);
 
 
    }

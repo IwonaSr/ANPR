@@ -42,6 +42,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.ejwon.anpr.fileIO.ReadJsonFile;
 import com.example.ejwon.anpr.common.ReadWriteImageFile;
 import com.example.ejwon.anpr.common.Utils;
 import com.example.ejwon.anpr.imageConversion.MatImage;
@@ -185,6 +186,7 @@ public class AndroidCameraApi extends Activity implements OnTaskCompleted{
             // Preparing for storing plate region
             platePointList = new ArrayList<Point>();
             plateView.setUtils(utils, platePointList);
+            ReadJsonFile.ReadFileToMemory();
 
             if (this.net == null) {
                 try {
@@ -587,7 +589,7 @@ public class AndroidCameraApi extends Activity implements OnTaskCompleted{
                         MatImage matImage = new MatImage();
 
                         if (image.getFormat() == mImageFormat) {
-                            Log.e(TAG, " process image, i: " + i);
+//                            Log.e(TAG, " process image, i: " + i);
                             Mat mGray = ImageFormatConversion.convertYuv420888ToGrayMat(image);
 //                            Mat mRgb = ImageFormatConversion.convertYuv420888ToRgbMat(image);
 //                            Mat mRgb = ImageFormatConversion.greenRGb(image);
