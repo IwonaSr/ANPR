@@ -38,7 +38,9 @@ public final class ImageProcessing {
         }
     //http://docs.opencv.org/2.4/modules/objdetect/doc/cascade_classification.html
         plates = new MatOfRect();
+
             if (mJavaDetector != null) {
+                //zmieniona sygnatura
                 mJavaDetector.detectMultiScale(
                         mGray, //macierz obrazu w ktory zawiera rozpoznane obiekty (przypuszczalne tablice)
                         plates, // wektor prostokątów zawierających rozpoznany obiekt

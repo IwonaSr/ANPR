@@ -4,8 +4,6 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.os.Environment;
-import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
@@ -21,10 +19,7 @@ import org.opencv.core.MatOfRect;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 
-import java.io.FileWriter;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 
 /**
@@ -185,21 +180,21 @@ public class PlateView extends View implements OnTaskCompleted {
     @Override
     public void updateResult(String result) {
         resultOCR.setText(result);
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
-        String toFile = "Date: " + timeStamp + "\n";
-        toFile += "NP: " + result + "\n\n\n";
-        if(result!=null && !TextUtils.isEmpty(result) && result!=""){
-            FileWriter f;
-            try{
-                f = new FileWriter(Environment.getExternalStorageDirectory() + "/IW-ANPR.txt", true);
-                Log.e("PlateView", "Save recognized plates");
-                f.write(toFile);
-                f.flush();
-                f.close();
-            }catch (Exception e) {
-                // TODO: handle exception
-            }
-        }
+//        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
+//        String toFile = "Date: " + timeStamp + "\n";
+//        toFile += "NP: " + result + "\n\n\n";
+//        if(result!=null && !TextUtils.isEmpty(result) && result!=""){
+//            FileWriter f;
+//            try{
+//                f = new FileWriter(Environment.getExternalStorageDirectory() + "/IW-ANPR.txt", true);
+//                Log.e("PlateView", "Save recognized plates");
+//                f.write(toFile);
+//                f.flush();
+//                f.close();
+//            }catch (Exception e) {
+//                // TODO: handle exception
+//            }
+//        }
     }
 
 }

@@ -5,9 +5,9 @@ import android.os.AsyncTask;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.example.ejwon.anpr.common.Index;
 import com.example.ejwon.anpr.common.ReadWriteImageFile;
 import com.example.ejwon.anpr.common.Result;
-import com.example.ejwon.anpr.common.Time;
 import com.example.ejwon.anpr.common.Utils;
 import com.example.ejwon.anpr.interfaces.OnTaskCompleted;
 import com.example.ejwon.anpr.models.BitmapWithCentroid;
@@ -53,6 +53,7 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
     public boolean isFail = false;
     public boolean isRunningTask = false;
     public static int i = 0;
+    public static int id = 0;
     public static int ct = 0;
 //    public static Result resultRec = new Result();
 
@@ -83,10 +84,13 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
         String recognizedText = "";
         int countOfCharInFirstSequence = 0;
         Result recognitionResult = new Result();
+        Index counter = new Index();
         Mat plateImageResized = null;
 
         while (iterator.hasNext()) {
             start = System.currentTimeMillis();
+            Log.e(TAG, "Start time Searching contours: " + start );
+
             Rect plateRect = iterator.next();
             Mat plateImage;
             List<BitmapWithCentroid> charList = new ArrayList<BitmapWithCentroid>();
@@ -168,9 +172,11 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
             // segmentacja
 //            String recognizedText = "";
             timeRequired = System.currentTimeMillis() - start;
-//            Log.e(TAG, "Time for find countour: " + timeRequired);
+            Log.e(TAG, "End Time for find countour: " + timeRequired);
 //            Log.e(TAG, "Start loop!!!" + contours.size());
             start2 = System.currentTimeMillis();
+            Log.e(TAG, "Start2 loop by founded countours!!!" + start2);
+
 
 //            List<Coordinate> coordinates = new ArrayList<Coordinate>();
 //            int corOrder = 0;
@@ -196,7 +202,7 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
 //                if(((boundingRect.height/boundingRect.width) >= 0.45) && ((boundingRect.height / boundingRect.width) <= 0.62) && ((boundingRect.height * boundingRect.width) >= 5000)){
 //                }
 
-                //NIE ZMIENIAC!!!!!!!!!!! POWODUJE BłEDY W ROZPOZNAWANIU
+                //NIE ZMIENIAC!!!!!!!!!!! POWODUJE BłEDY W ROZPOZNAWANIU, SIEC NEURONOWA ROZPOZNA TYLKO ZNAKI O DANYCH WYMIARACH
                 //wyznaczenie progów W/H W*H czyli maksymalnych wartosci konturu otaczajacego potencjalna litere
                 if (((boundingRect.height / boundingRect.width) >= 1.5) //stosunek dlugosci boków prosotkąta W/H nie moze byc mniejsza niz 1,5
                         && ((boundingRect.height / boundingRect.width) <= 3.0)    //stosunek dlugosci boków W/H nie moze byc większa niz 3
@@ -275,9 +281,9 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
 
             timeRequired2 = System.currentTimeMillis() - start2;
 //            Log.e(TAG, "Passed the loop");
-//            Log.e(TAG, "Time for OCR: " + timeRequired2);
-
+            Log.e(TAG, "End2 Time searching by contours" + timeRequired2);
             start3 = System.currentTimeMillis();
+            Log.e(TAG, "Start3 OCR processing " + start3);
             Collections.sort(charList);
 
             //DOWNSAMPLE_WIDTH oraz DOWNSAMPLE_HEIGHT wymiar gridu w do którego zmniejszamy znak - downsampling image
@@ -380,15 +386,16 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
                 result += "\n" + recognizedText;
 
             timeRequired3 = System.currentTimeMillis() - start3;
-//            Log.e(TAG, "Time: " + timeRequired3);
+            Log.e(TAG, "End3 of processing OCR: " + timeRequired3);
+
             timeAllRequired = System.currentTimeMillis() - start;
-//            Log.d("Summary time: ", "Time: " + timeAllRequired);
-//            Log.e(TAG, "Plate number:" + recognizedText);
+            Log.e(TAG, "Summary Time: " + timeAllRequired);
+            Log.e(TAG, "Plate number:" + recognizedText);
 
         }
 
         int sizeResult = result.length();
-        Log.e(TAG, "Length: " + sizeResult + "Result: " + result);
+//        Log.e(TAG, "Length: " + sizeResult + "Result: " + result);
         if (!result.isEmpty() && sizeResult >= 2) {
 
             result = utils.formatPlateNumber(result);
@@ -406,9 +413,9 @@ public class OCRRecognition extends AsyncTask<Void, Bitmap, String> {
 
             recognitionResult.setRecognizedNumber(result);
 //            recognitionResult.setRecognizedTown(utils.lookingForPlate(recognitionResult));
-            recognitionResult = utils.lookingForPlate(recognitionResult);
+            recognitionResult = utils.lookingForPlate(recognitionResult,id, ct);//odkomentowac
             resultTown = recognitionResult.getRecognizedTown();
-            recognitionResult.setAllTimes(new Time(timeRequired, timeRequired2, timeRequired3, timeAllRequired));
+//            recognitionResult.setAllTimes(new Time(timeRequired, timeRequired2, timeRequired3, timeAllRequired));
             ReadWriteImageFile.saveResultToFile(recognitionResult);
 //            ReadWriteImageFile.saveImageToFile(plateImageResized, "ANPR_drawCountours/");
 

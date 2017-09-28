@@ -68,4 +68,10 @@ public class Result {
         return "(" + this.index.getNumber() + ")" + this.recognizedNumber + ":"
                 + this.index.getTown()+ ":" + this.recognizedTown + ":" + this.allTimes.timeToDisplay()  + ",";
     }
+
+    String displayResultWithoutTime(){
+        return "(" + this.index.getNumber() + ")" + this.recognizedNumber + ":"
+                + this.index.getTown()+ ":" + this.recognizedTown + ", ";
+    }
+
 }

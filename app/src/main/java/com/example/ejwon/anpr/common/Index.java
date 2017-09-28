@@ -25,6 +25,15 @@ public class Index {
     public void setNumber(int number) {
         this.number = number;
     }
+    public void addNumber() {
+        this.number = this.number + 1;
+    }
+    public void addTown() {
+        this.town = this.town + 1;
+    }
+
+
+
 
     public int getTown() {
         return town;

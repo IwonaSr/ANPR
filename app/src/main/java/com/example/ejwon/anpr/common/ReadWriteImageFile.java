@@ -63,7 +63,7 @@ public class ReadWriteImageFile {
         File file = null;
         Boolean write_successful = false;
         String savedResult = "";
-        savedResult = result.displayResult();
+        savedResult = result.displayResultWithoutTime();
 //        Log.d("SavedResult: ", savedResult);
         if(!savedResult.isEmpty()) {
 

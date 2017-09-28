@@ -84,32 +84,32 @@ public class Utils {
     }
 
 
-    public Result lookingForPlate(Result result) {
+    public Result lookingForPlate(Result result,int i, int ct) {
         String number = "";
         String recognizedTown = "";
         String recInfo= "";
         String recognizedPlate = result.getRecognizedNumber();
         Log.d("RecognizedPlate: ", recognizedPlate);
-        int i = 0;
-        int ct = 0;
+//        int i = 0;
+//        int ct = 0;
         Index index =  new Index();
         if (!recognizedPlate.isEmpty()) {
             i = i + 1;
-//            Log.d("Index: ", "" + i);
+            Log.d("Index: ", "" + i);
 
 //            String districtNumber = recognizedPlate.substring(0, 2);
             String districtNumber = recognizedPlate;
-            Log.e(TAG, "Plate: " + districtNumber);
+//            Log.e(TAG, "Plate: " + districtNumber);
             recognizedTown = ReadFile(districtNumber);
-            Log.e(TAG, "Town: " + recognizedTown);
+//            Log.e(TAG, "Town: " + recognizedTown);
             result.setRecognizedTown(recognizedTown);
 
             if (!recognizedTown.isEmpty()) {
 //                Log.d("Dupa: ", "" + ct);
-                if (recognizedTown.contains("Mys")) {
+                if (recognizedTown.contains("Pszczyna")) {
                     ct = ct + 1;
                     index.setTown(ct);
-                    Log.d("TownInside: ", "" + ct);
+//                    Log.d("TownInside: ", "" + ct);
                 }
 //            String time = result.getAllTimes().timeToDisplay();
 //            recInfo = "(" + i + ")" + recognizedPlate + ":" + recognizedTown + ":ct:" + ct + time + ", ";
@@ -117,11 +117,53 @@ public class Utils {
 //            result.setNumberTown(ct);
             }
             index.setNumber(i);
+            index.setTown(ct);
             result.setIndex(index);
         }
 
         return result;
     }
+
+    public void lookingForPlateAsVoid(Result result, Index index) {
+        String number = "";
+        String recognizedTown = "";
+        String recInfo= "";
+        String recognizedPlate = result.getRecognizedNumber();
+        Log.d("RecognizedPlate: ", recognizedPlate);
+        int i = 0;
+        int ct = 0;
+//        Index index =  new Index();
+        if (!recognizedPlate.isEmpty()) {
+            i = i + 1;
+            Log.d("Index: ", "" + i);
+
+//            String districtNumber = recognizedPlate.substring(0, 2);
+            String districtNumber = recognizedPlate;
+//            Log.e(TAG, "Plate: " + districtNumber);
+            recognizedTown = ReadFile(districtNumber);
+//            Log.e(TAG, "Town: " + recognizedTown);
+            result.setRecognizedTown(recognizedTown);
+
+            if (!recognizedTown.isEmpty()) {
+//                Log.d("Dupa: ", "" + ct);
+                if (recognizedTown.contains("Pszczyna")) {
+                    ct = ct + 1;
+                    index.setTown(ct);
+//                    Log.d("TownInside: ", "" + ct);
+                }
+//            String time = result.getAllTimes().timeToDisplay();
+//            recInfo = "(" + i + ")" + recognizedPlate + ":" + recognizedTown + ":ct:" + ct + time + ", ";
+//            result.setNumberIteration(i);
+//            result.setNumberTown(ct);
+            }
+            if(i == 1 && ct ==1) {
+                index.addNumber();
+                index.addTown();
+                result.setIndex(index);
+            }
+        }
+    }
+
 
     public String ReadFile (String result){
         String TAG = "readJsonFile";
